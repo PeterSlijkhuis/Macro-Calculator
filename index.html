@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Macro Calculator — lose fat, keep muscle</title>
+  <meta name="description" content="Calculate your daily calories and macros to lose fat at a healthy pace while preserving muscle. Metric &amp; imperial, inclusive of trans and non-binary people on hormone therapy." />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'&gt;&lt;text y='.9em' font-size='90'&gt;🥗&lt;/text&gt;&lt;/svg&gt;" />
+</head>
+<body>
+  <main class="wrap">
+    <header class="hero">
+      <h1>Macro Calculator</h1>
+      <p class="tagline">Daily calories and macros to lose fat at a healthy pace — with enough protein to hold on to your muscle.</p>
+    </header>
+
+    <form id="calc-form" class="card" novalidate>
+      <fieldset class="units-row">
+        <legend class="sr-only">Unit system</legend>
+        <div class="seg" role="radiogroup" aria-label="Unit system">
+          <input type="radio" name="units" id="units-metric" value="metric" checked />
+          <label for="units-metric">Metric (kg · cm)</label>
+          <input type="radio" name="units" id="units-imperial" value="imperial" />
+          <label for="units-imperial">Imperial (lb · ft/in)</label>
+        </div>
+      </fieldset>
+
+      <div class="grid">
+        <div class="field">
+          <label for="age">Age <span class="unit">years</span></label>
+          <input type="number" id="age" inputmode="numeric" min="16" max="100" step="1" value="30" required />
+        </div>
+
+        <div class="field" data-units="metric">
+          <label for="height-cm">Height <span class="unit">cm</span></label>
+          <input type="number" id="height-cm" inputmode="decimal" min="120" max="230" step="0.5" value="175" />
+        </div>
+        <div class="field field-pair" data-units="imperial" hidden>
+          <label for="height-ft">Height <span class="unit">ft / in</span></label>
+          <div class="pair">
+            <input type="number" id="height-ft" inputmode="numeric" min="3" max="7" step="1" value="5" aria-label="Height, feet" />
+            <input type="number" id="height-in" inputmode="decimal" min="0" max="11.5" step="0.5" value="9" aria-label="Height, inches" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="weight">Current weight <span class="unit" data-weight-unit>kg</span></label>
+          <input type="number" id="weight" inputmode="decimal" min="30" max="400" step="0.1" value="85" required />
+        </div>
+
+        <div class="field">
+          <label for="target-weight">Target weight <span class="unit" data-weight-unit>kg</span></label>
+          <input type="number" id="target-weight" inputmode="decimal" min="30" max="400" step="0.1" value="75" required />
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="profile">Hormonal profile</label>
+        <p class="hint">Metabolism formulas depend on hormone-driven body composition, not identity. Pick what best matches your hormonal situation — there's an option for every stage of transition.</p>
+        <select id="profile">
+          <option value="male">Male (typical testosterone-dominant)</option>
+          <option value="female">Female (typical estrogen-dominant)</option>
+          <option value="transfem">Trans woman / transfeminine</option>
+          <option value="transmasc">Trans man / transmasculine</option>
+          <option value="custom">Non-binary / intersex / custom blend</option>
+        </select>
+      </div>
+
+      <div class="field" id="hrt-field" hidden>
+        <label for="hrt-months">Time on hormone therapy <span class="unit">months</span></label>
+        <p class="hint">Metabolic changes from HRT settle in over roughly the first 6 months. Enter 0 if you haven't started — we'll use your pre-HRT profile and shift it gradually as the months go up.</p>
+        <input type="number" id="hrt-months" inputmode="numeric" min="0" max="600" step="1" value="0" />
+      </div>
+
+      <div class="field" id="blend-field" hidden>
+        <label for="blend">Where does your hormonal profile sit?</label>
+        <p class="hint">Slide between a typical estrogen-dominant profile (left) and a typical testosterone-dominant profile (right). If unsure, leave it in the middle.</p>
+        <div class="blend-row">
+          <span class="blend-end">Estrogen</span>
+          <input type="range" id="blend" min="0" max="100" step="5" value="50" aria-label="Hormonal profile blend, 0 is estrogen-dominant, 100 is testosterone-dominant" />
+          <span class="blend-end">Testosterone</span>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="field">
+          <label for="activity">Activity level</label>
+          <select id="activity">
+            <option value="1.2">Sedentary — desk job, little exercise</option>
+            <option value="1.375">Lightly active — exercise 1–3× / week</option>
+            <option value="1.55" selected>Moderately active — exercise 3–5× / week</option>
+            <option value="1.725">Very active — hard exercise 6–7× / week</option>
+            <option value="1.9">Athlete — hard daily training / physical job</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="pace">Weight-loss pace</label>
+          <select id="pace">
+            <option value="0.005">Gentle — 0.5% of body weight / week</option>
+            <option value="0.0075" selected>Moderate — 0.75% / week</option>
+            <option value="0.01">Brisk — 1% / week (max sustainable)</option>
+          </select>
+        </div>
+      </div>
+    </form>
+
+    <section id="results" class="results" aria-live="polite"></section>
+
+    <footer class="foot">
+      <p><strong>Not medical advice.</strong> This tool gives evidence-based estimates for healthy adults. Individual needs vary — talk to a doctor or registered dietitian before big dietary changes, especially if you're under 18, pregnant, have a medical condition, an eating-disorder history, or are on hormone therapy.</p>
+      <p>Formulas: Mifflin–St Jeor BMR · protein 1.6–2.2 g/kg to preserve muscle in a deficit · deficit capped at 25% of maintenance. <a href="https://github.com/PeterSlijkhuis/Macro-Calculator">Source on GitHub</a></p>
+    </footer>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
