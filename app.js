@@ -9,8 +9,7 @@ const HRT_SETTLE_MONTHS = 6;  // metabolic shift settles over ~first 6 months of
 const MAX_DEFICIT_FRACTION = 0.25; // never cut more than 25% below maintenance
 const MIN_CALORIES = 1200;    // below this, flag as too low without supervision
 
-const FAT_MIN_G_PER_KG = 0.7; // hormonal-health floor
-const FAT_FRACTION = 0.25;    // default: 25% of calories from fat
+const FAT_FLOOR_G_PER_KG = 0.5; // absolute floor when the budget clamp kicks in
 
 const $ = (id) => document.getElementById(id);
 
@@ -109,11 +108,16 @@ function profileBlend() {
   }
 }
 
-/* ---------- protein slider ---------- */
+/* ---------- macro sliders & zones ---------- */
 
 function proteinGkg() {
   const v = parseFloat($("protein-gkg").value);
   return Number.isFinite(v) ? v : 2.0;
+}
+
+function fatGkg() {
+  const v = parseFloat($("fat-gkg").value);
+  return Number.isFinite(v) ? v : 0.8;
 }
 
 /**
@@ -153,13 +157,88 @@ function proteinZone(gkg) {
   };
 }
 
+/**
+ * What a given fat intake (g per kg body weight) means — for hormone health,
+ * satiety, and how much of the calorie budget is left for carbs.
+ */
+function fatZone(gkg) {
+  if (gkg < 0.6) return {
+    label: "Hormones at risk",
+    tone: "critical",
+    icon: "⛔",
+    text: "Dietary fat is the raw material for sex hormones (estrogen and testosterone) and carries vitamins A, D, E and K. Held below ~0.6 g/kg, hormone levels, skin, joints, mood and sleep tend to suffer — extra relevant if you're on HRT. This is not the place to save calories.",
+  };
+  if (gkg < 0.75) return {
+    label: "Cutting it close",
+    tone: "serious",
+    icon: "⚠",
+    text: "Workable for a short, disciplined cut, but there's little margin. Watch for low energy, dry skin, poor sleep or cycle/hormonal changes, and nudge the slider up if any of those show up.",
+  };
+  if (gkg <= 1.1) return {
+    label: "Sweet spot",
+    tone: "good",
+    icon: "✓",
+    text: "Enough fat to keep hormone production and vitamin absorption running smoothly, it slows digestion (so meals keep you full for longer), and it still leaves solid room in the budget for the carbs that fuel your training.",
+  };
+  if (gkg <= 1.35) return {
+    label: "Higher fat",
+    tone: "neutral",
+    icon: "🥑",
+    text: "A fine preference if fatty foods are what keep you satisfied — your hormones were fully covered a while ago. Just remember every gram of fat costs 9 kcal, more than double protein or carbs, so carb room shrinks quickly up here.",
+  };
+  return {
+    label: "Carb squeeze",
+    tone: "serious",
+    icon: "⚠",
+    text: "Beyond any hormonal benefit — at this level fat is mostly displacing carbs from the budget, which makes hard training sessions feel flat. Fine on a deliberate low-carb approach; otherwise slide it back down.",
+  };
+}
+
+/**
+ * What the leftover carb allowance means. Carbs are protein-sparing fuel:
+ * with glycogen available the body has less reason to burn amino acids.
+ * Thresholds in g per kg body weight.
+ */
+function carbZone(gPerKg) {
+  if (gPerKg < 0.75) return {
+    label: "Keto territory",
+    tone: "serious",
+    icon: "⚠",
+    text: "Very low carb. Doable if it's a deliberate choice (some people love it for appetite control), but expect flat, heavy workouts for the first weeks and less top-end in intense training. To free up carb room, nudge protein or fat down, or pick a gentler pace.",
+  };
+  if (gPerKg < 2) return {
+    label: "Low fuel",
+    tone: "neutral",
+    icon: "🔋",
+    text: "Enough for daily life and light training. Hard or long sessions will dip into reserves — if workouts start feeling flat, this number is the reason. Time most of these carbs around training for the best return.",
+  };
+  if (gPerKg <= 4) return {
+    label: "Moderate fuel",
+    tone: "good",
+    icon: "✓",
+    text: "Solid glycogen for regular training. Carbs are also protein-sparing: with fuel on hand, your body has less reason to burn amino acids for energy — one more layer of protection for your muscle.",
+  };
+  return {
+    label: "High fuel",
+    tone: "good",
+    icon: "🚀",
+    text: "Plenty of glycogen — well suited to high training volumes or a physical job. If you're not that active, some of this budget might serve you better as fat (satiety) or a slightly brisker pace.",
+  };
+}
+
+function renderZone(outId, zoneId, gkg, zone, decimals) {
+  $(outId).value = gkg.toFixed(decimals);
+  $(zoneId).innerHTML = `
+    <span class="zone-chip zone-${zone.tone}"><span aria-hidden="true">${zone.icon}</span> ${zone.label}</span>
+    <p>${zone.text}</p>`;
+}
+
 function renderProteinZone() {
-  const gkg = proteinGkg();
-  $("protein-out").value = gkg.toFixed(1);
-  const z = proteinZone(gkg);
-  $("protein-zone").innerHTML = `
-    <span class="zone-chip zone-${z.tone}"><span aria-hidden="true">${z.icon}</span> ${z.label}</span>
-    <p>${z.text}</p>`;
+  renderZone("protein-out", "protein-zone", proteinGkg(), proteinZone(proteinGkg()), 1);
+}
+
+function renderFatZone() {
+  renderZone("fat-out", "fat-zone", fatGkg(), fatZone(fatGkg()), 2);
 }
 
 /* ---------- core calculation ---------- */
@@ -221,39 +300,40 @@ function calculate() {
     );
   }
 
-  // Protein: sized to preserve muscle, at the user-chosen g/kg. For higher
-  // body-fat levels the target weight is a better proxy for lean mass than
-  // current weight.
+  // Protein and fat come from the sliders (g per kg of reference weight);
+  // carbs fill whatever calories remain. For higher body-fat levels the
+  // target weight is a better proxy for lean mass than current weight.
   const gkg = proteinGkg();
+  const fkg = fatGkg();
   const bmi = weightKg / Math.pow(heightCm / 100, 2);
   const proteinRefKg = bmi >= 30 ? Math.min(weightKg, Math.max(targetKg, weightKg * 0.75)) : weightKg;
   let proteinG = gkg * proteinRefKg;
+  let fatG = fkg * proteinRefKg;
 
   if (losing && gkg < 1.6) {
     warnings.push(
       "Protein is set below 1.6 g/kg while in a deficit. Part of your weight loss will come from muscle instead of fat — slide protein up into the 1.6–2.2 g/kg range to protect it."
     );
   }
-
-  let fatG = Math.max(FAT_MIN_G_PER_KG * proteinRefKg, (FAT_FRACTION * calories) / 9);
-
-  // Keep the three macros inside the calorie budget.
-  if (proteinG * 4 + fatG * 9 > calories) {
-    fatG = Math.max(FAT_MIN_G_PER_KG * proteinRefKg, (calories - proteinG * 4) / 9);
-    if (proteinG * 4 + fatG * 9 > calories) {
-      proteinG = Math.max(Math.min(gkg, 1.6) * proteinRefKg, (calories - fatG * 9) / 4);
-      warnings.push(
-        "Calories are tight, so protein and fat take up almost the whole budget. A gentler pace (or a lower protein setting) would leave more room for carbs and be easier to sustain."
-      );
-    }
-  }
-
-  let carbsG = Math.max(0, (calories - proteinG * 4 - fatG * 9) / 4);
-  if (losing && carbsG < 50 && !warnings.some((w) => w.includes("tight"))) {
+  if (fkg < 0.6) {
     warnings.push(
-      "Carbs come out quite low. That's workable, but if training performance dips, choose a gentler pace for more carb room."
+      "Fat is set below 0.6 g/kg. Held there for long, hormone production and vitamin absorption suffer — slide fat up to at least 0.6–0.8 g/kg."
     );
   }
+
+  // Keep the three macros inside the calorie budget: trim fat first (down to
+  // an absolute floor), then protein.
+  if (proteinG * 4 + fatG * 9 > calories) {
+    fatG = Math.max(FAT_FLOOR_G_PER_KG * proteinRefKg, (calories - proteinG * 4) / 9);
+    if (proteinG * 4 + fatG * 9 > calories) {
+      proteinG = Math.max(Math.min(gkg, 1.6) * proteinRefKg, (calories - fatG * 9) / 4);
+    }
+    warnings.push(
+      "Your protein and fat settings add up to more than the calorie budget, so they've been trimmed to fit and carbs are at zero. Lower one of the sliders, or pick a gentler pace."
+    );
+  }
+
+  const carbsG = Math.max(0, (calories - proteinG * 4 - fatG * 9) / 4);
 
   if (age < 18) {
     warnings.push(
@@ -263,7 +343,7 @@ function calculate() {
 
   return {
     bmr, tdee, calories, deficit, weeklyLossKg, weeks, losing, warnings,
-    proteinG, fatG, carbsG, proteinRefKg, weightKg, targetKg, bmi, blend: b, gkg,
+    proteinG, fatG, carbsG, proteinRefKg, weightKg, targetKg, bmi, blend: b, gkg, fkg,
   };
 }
 
@@ -343,11 +423,20 @@ function render() {
       <table class="macro-table">
         <thead><tr><th scope="col">Macro</th><th scope="col">Grams / day</th><th scope="col">kcal</th><th scope="col">Why</th></tr></thead>
         <tbody>
-          <tr><td>Protein</td><td>${fmt(r.proteinG)} g</td><td>${fmt(r.proteinG * 4)}</td><td>${r.gkg.toFixed(1)} g/kg — ${proteinZone(r.gkg).label.toLowerCase()}</td></tr>
-          <tr><td>Carbs</td><td>${fmt(r.carbsG)} g</td><td>${fmt(r.carbsG * 4)}</td><td>fuels training and daily energy</td></tr>
-          <tr><td>Fat</td><td>${fmt(r.fatG)} g</td><td>${fmt(r.fatG * 9)}</td><td>never below ${FAT_MIN_G_PER_KG} g/kg — hormone health</td></tr>
+          <tr><td>Protein</td><td>${fmt(r.proteinG)} g</td><td>${fmt(r.proteinG * 4)}</td><td>${(r.proteinG / r.proteinRefKg).toFixed(1)} g/kg — ${proteinZone(r.proteinG / r.proteinRefKg).label.toLowerCase()}</td></tr>
+          <tr><td>Carbs</td><td>${fmt(r.carbsG)} g</td><td>${fmt(r.carbsG * 4)}</td><td>${(r.carbsG / r.weightKg).toFixed(1)} g/kg — ${carbZone(r.carbsG / r.weightKg).label.toLowerCase()}</td></tr>
+          <tr><td>Fat</td><td>${fmt(r.fatG)} g</td><td>${fmt(r.fatG * 9)}</td><td>${(r.fatG / r.proteinRefKg).toFixed(2)} g/kg — ${fatZone(r.fatG / r.proteinRefKg).label.toLowerCase()}</td></tr>
         </tbody>
       </table>
+
+      ${(() => {
+        const z = carbZone(r.carbsG / r.weightKg);
+        return `
+      <div class="zone-feedback carb-note">
+        <span class="zone-chip zone-${z.tone}"><span aria-hidden="true">${z.icon}</span> Carbs: ${z.label.toLowerCase()}</span>
+        <p><strong>Carbs are the leftover dial</strong> — they fill the ${fmt(r.carbsG * 4)} kcal that remain after your protein and fat settings. ${z.text}</p>
+      </div>`;
+      })()}
 
       <h2 class="section-title">The numbers behind it</h2>
       <div class="tiles">
@@ -407,6 +496,7 @@ document.addEventListener("DOMContentLoaded", () => {
   syncUnitFields();
   syncProfileFields();
   renderProteinZone();
+  renderFatZone();
   render();
 
   $("calc-form").addEventListener("input", (e) => {
@@ -416,6 +506,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (e.target.id === "profile") syncProfileFields();
     if (e.target.id === "protein-gkg") renderProteinZone();
+    if (e.target.id === "fat-gkg") renderFatZone();
     saveState();
     render();
   });

@@ -129,12 +129,18 @@ input[type="number"]:focus-visible, select:focus-visible, input[type="range"]:fo
 .blend-row input[type="range"] { flex: 1; accent-color: var(--accent); }
 .blend-end { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
 
-/* protein slider zone feedback */
-.protein-zone { margin-top: 0.6rem; }
-.protein-zone p {
+/* macro slider zone feedback */
+.zone-feedback { margin-top: 0.6rem; }
+.zone-feedback p {
   margin: 0.45rem 0 0;
   font-size: 0.88rem;
   color: var(--ink-2);
+}
+.carb-note {
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 0.8rem 1rem;
+  margin-top: 1rem;
 }
 .zone-chip {
   display: inline-flex;
