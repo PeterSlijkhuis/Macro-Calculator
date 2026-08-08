@@ -129,6 +129,28 @@ input[type="number"]:focus-visible, select:focus-visible, input[type="range"]:fo
 .blend-row input[type="range"] { flex: 1; accent-color: var(--accent); }
 .blend-end { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
 
+/* protein slider zone feedback */
+.protein-zone { margin-top: 0.6rem; }
+.protein-zone p {
+  margin: 0.45rem 0 0;
+  font-size: 0.88rem;
+  color: var(--ink-2);
+}
+.zone-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid var(--border);
+}
+.zone-good     { background: color-mix(in srgb, #0ca30c 14%, transparent); border-color: #0ca30c; }
+.zone-neutral  { background: color-mix(in srgb, var(--accent) 12%, transparent); border-color: var(--accent); }
+.zone-serious  { background: color-mix(in srgb, #ec835a 16%, transparent); border-color: #ec835a; }
+.zone-critical { background: color-mix(in srgb, #d03b3b 14%, transparent); border-color: #d03b3b; }
+
 /* results */
 .hero-number { text-align: center; margin-bottom: 1.5rem; }
 .hero-value { font-size: 3rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }

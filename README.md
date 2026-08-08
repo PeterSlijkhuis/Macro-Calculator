@@ -12,8 +12,12 @@ macros to **lose fat at a healthy pace while preserving muscle**.
 - **Inclusive hormonal profiles** — options for trans women, trans men, and
   non-binary/intersex people, including a months-on-HRT input that gradually
   shifts the metabolism estimate toward the hormone-matched profile
-- **Muscle-sparing macros** — protein set at 2.0 g/kg (evidence range 1.6–2.2 g/kg),
-  fat never below 0.7 g/kg, deficit capped at 25% of maintenance
+- **Adjustable protein slider** (1.0–3.0 g/kg, default 2.0) with a live explanation
+  of what each level means for muscle retention, satiety, and the rest of your
+  calorie budget — from "muscle at risk" through the 1.6–2.2 g/kg sweet spot to
+  "more than needed"
+- **Muscle-sparing macros** — fat never below 0.7 g/kg, deficit capped at 25%
+  of maintenance
 - **Safety rails** — warnings for very low calories, very low carbs, and under-18 users
 - Works offline once loaded, remembers your inputs locally, light & dark mode,
   no tracking, no dependencies
@@ -27,7 +31,7 @@ macros to **lose fat at a healthy pace while preserving muscle**.
 | HRT adjustment | Blend factor `b` shifts linearly from the pre-HRT profile to the hormone-matched profile over the first 6 months of HRT |
 | Maintenance (TDEE) | `BMR × activity factor` (1.2 – 1.9) |
 | Deficit | Chosen pace (0.5–1% of body weight/week) × 7700 kcal/kg ÷ 7, **capped at 25% of TDEE** |
-| Protein | 2.0 g per kg body weight (target weight is used as the reference when BMI ≥ 30, as a better proxy for lean mass) |
+| Protein | User-chosen 1.0–3.0 g per kg body weight, default 2.0 (target weight is used as the reference when BMI ≥ 30, as a better proxy for lean mass); below 1.6 g/kg in a deficit the tool warns that weight loss will include muscle |
 | Fat | The larger of 0.7 g/kg or 25% of calories |
 | Carbs | Whatever calories remain |
 

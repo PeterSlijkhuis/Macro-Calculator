@@ -9,7 +9,6 @@ const HRT_SETTLE_MONTHS = 6;  // metabolic shift settles over ~first 6 months of
 const MAX_DEFICIT_FRACTION = 0.25; // never cut more than 25% below maintenance
 const MIN_CALORIES = 1200;    // below this, flag as too low without supervision
 
-const PROTEIN_G_PER_KG = 2.0; // mid-point of the 1.6–2.2 g/kg evidence range
 const FAT_MIN_G_PER_KG = 0.7; // hormonal-health floor
 const FAT_FRACTION = 0.25;    // default: 25% of calories from fat
 
@@ -110,6 +109,59 @@ function profileBlend() {
   }
 }
 
+/* ---------- protein slider ---------- */
+
+function proteinGkg() {
+  const v = parseFloat($("protein-gkg").value);
+  return Number.isFinite(v) ? v : 2.0;
+}
+
+/**
+ * What a given protein intake (g per kg body weight) means in a calorie
+ * deficit — for muscle retention, satiety, and the rest of the budget.
+ */
+function proteinZone(gkg) {
+  if (gkg < 1.4) return {
+    label: "Muscle at risk",
+    tone: "critical",
+    icon: "⛔",
+    text: "In a calorie deficit this doesn't supply enough amino acids, so your body covers the shortfall by breaking down muscle — the \"cannibalisation\" you want to avoid. It's also the least filling setting: protein is the most satiating macro, and with this little of it hunger bites harder and cravings win more often.",
+  };
+  if (gkg < 1.6) return {
+    label: "Bare minimum",
+    tone: "serious",
+    icon: "⚠",
+    text: "Enough to slow muscle loss, but below the range studied for people dieting with training. Expect to give up some muscle along with the fat, and to feel hungrier between meals than you would in the sweet spot.",
+  };
+  if (gkg <= 2.2) return {
+    label: "Sweet spot",
+    tone: "good",
+    icon: "✓",
+    text: "The evidence-based range (1.6–2.2 g/kg) for keeping virtually all your muscle in a deficit — provided you also lift. Bonus: protein is the most filling macro and costs the most calories to digest (~25% of its energy), so hunger is easiest to manage here.",
+  };
+  if (gkg <= 2.6) return {
+    label: "Extra insurance",
+    tone: "neutral",
+    icon: "🛡",
+    text: "A little more appetite control and a safety margin worth having if you're already lean or cutting briskly — that's when muscle is most at risk. Muscle-wise the benefit beyond 2.2 g/kg is marginal, and every extra gram of protein takes calories away from the carbs that fuel your training.",
+  };
+  return {
+    label: "More than needed",
+    tone: "serious",
+    icon: "⚠",
+    text: "No extra muscle protection up here — the retention benefit plateaus. It mostly crowds carbs and fat out of your budget (harder workouts, low energy) and is a chore to eat every day. Not harmful for healthy kidneys, just pointless.",
+  };
+}
+
+function renderProteinZone() {
+  const gkg = proteinGkg();
+  $("protein-out").value = gkg.toFixed(1);
+  const z = proteinZone(gkg);
+  $("protein-zone").innerHTML = `
+    <span class="zone-chip zone-${z.tone}"><span aria-hidden="true">${z.icon}</span> ${z.label}</span>
+    <p>${z.text}</p>`;
+}
+
 /* ---------- core calculation ---------- */
 
 function calculate() {
@@ -169,11 +221,19 @@ function calculate() {
     );
   }
 
-  // Protein: sized to preserve muscle. For higher body-fat levels the target
-  // weight is a better proxy for lean mass than current weight.
+  // Protein: sized to preserve muscle, at the user-chosen g/kg. For higher
+  // body-fat levels the target weight is a better proxy for lean mass than
+  // current weight.
+  const gkg = proteinGkg();
   const bmi = weightKg / Math.pow(heightCm / 100, 2);
   const proteinRefKg = bmi >= 30 ? Math.min(weightKg, Math.max(targetKg, weightKg * 0.75)) : weightKg;
-  let proteinG = PROTEIN_G_PER_KG * proteinRefKg;
+  let proteinG = gkg * proteinRefKg;
+
+  if (losing && gkg < 1.6) {
+    warnings.push(
+      "Protein is set below 1.6 g/kg while in a deficit. Part of your weight loss will come from muscle instead of fat — slide protein up into the 1.6–2.2 g/kg range to protect it."
+    );
+  }
 
   let fatG = Math.max(FAT_MIN_G_PER_KG * proteinRefKg, (FAT_FRACTION * calories) / 9);
 
@@ -181,9 +241,9 @@ function calculate() {
   if (proteinG * 4 + fatG * 9 > calories) {
     fatG = Math.max(FAT_MIN_G_PER_KG * proteinRefKg, (calories - proteinG * 4) / 9);
     if (proteinG * 4 + fatG * 9 > calories) {
-      proteinG = Math.max(1.6 * proteinRefKg, (calories - fatG * 9) / 4);
+      proteinG = Math.max(Math.min(gkg, 1.6) * proteinRefKg, (calories - fatG * 9) / 4);
       warnings.push(
-        "Calories are tight, so protein and fat take up almost the whole budget. A gentler pace would leave more room for carbs and be easier to sustain."
+        "Calories are tight, so protein and fat take up almost the whole budget. A gentler pace (or a lower protein setting) would leave more room for carbs and be easier to sustain."
       );
     }
   }
@@ -203,7 +263,7 @@ function calculate() {
 
   return {
     bmr, tdee, calories, deficit, weeklyLossKg, weeks, losing, warnings,
-    proteinG, fatG, carbsG, proteinRefKg, weightKg, targetKg, bmi, blend: b,
+    proteinG, fatG, carbsG, proteinRefKg, weightKg, targetKg, bmi, blend: b, gkg,
   };
 }
 
@@ -283,7 +343,7 @@ function render() {
       <table class="macro-table">
         <thead><tr><th scope="col">Macro</th><th scope="col">Grams / day</th><th scope="col">kcal</th><th scope="col">Why</th></tr></thead>
         <tbody>
-          <tr><td>Protein</td><td>${fmt(r.proteinG)} g</td><td>${fmt(r.proteinG * 4)}</td><td>${PROTEIN_G_PER_KG.toFixed(1)} g/kg — protects muscle while you lose fat</td></tr>
+          <tr><td>Protein</td><td>${fmt(r.proteinG)} g</td><td>${fmt(r.proteinG * 4)}</td><td>${r.gkg.toFixed(1)} g/kg — ${proteinZone(r.gkg).label.toLowerCase()}</td></tr>
           <tr><td>Carbs</td><td>${fmt(r.carbsG)} g</td><td>${fmt(r.carbsG * 4)}</td><td>fuels training and daily energy</td></tr>
           <tr><td>Fat</td><td>${fmt(r.fatG)} g</td><td>${fmt(r.fatG * 9)}</td><td>never below ${FAT_MIN_G_PER_KG} g/kg — hormone health</td></tr>
         </tbody>
@@ -346,6 +406,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadState();
   syncUnitFields();
   syncProfileFields();
+  renderProteinZone();
   render();
 
   $("calc-form").addEventListener("input", (e) => {
@@ -354,6 +415,7 @@ document.addEventListener("DOMContentLoaded", () => {
       syncUnitFields();
     }
     if (e.target.id === "profile") syncProfileFields();
+    if (e.target.id === "protein-gkg") renderProteinZone();
     saveState();
     render();
   });

@@ -104,6 +104,17 @@
           </select>
         </div>
       </div>
+
+      <div class="field">
+        <label for="protein-gkg">Protein intake <span class="unit"><output id="protein-out" for="protein-gkg">2.0</output> g per kg of body weight</span></label>
+        <p class="hint">This is the main lever for keeping muscle while dieting. Move the slider to see what each level does to muscle, hunger, and the rest of your calorie budget.</p>
+        <div class="blend-row">
+          <span class="blend-end">1.0</span>
+          <input type="range" id="protein-gkg" min="1" max="3" step="0.1" value="2" aria-describedby="protein-zone" />
+          <span class="blend-end">3.0</span>
+        </div>
+        <div id="protein-zone" class="protein-zone" aria-live="polite"></div>
+      </div>
     </form>
 
     <section id="results" class="results" aria-live="polite"></section>
