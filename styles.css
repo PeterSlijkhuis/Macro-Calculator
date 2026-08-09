@@ -129,6 +129,51 @@ input[type="number"]:focus-visible, select:focus-visible, input[type="range"]:fo
 .blend-row input[type="range"] { flex: 1; accent-color: var(--accent); }
 .blend-end { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
 
+.g-day { font-weight: 700; font-size: 0.9em; }
+
+/* slider value bubble */
+.slider-wrap { position: relative; flex: 1; display: flex; }
+.slider-wrap input[type="range"] { width: 100%; accent-color: var(--accent); }
+.slider-bubble {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: var(--ink);
+  color: var(--page);
+  border-radius: 8px;
+  padding: 0.35rem 0.65rem;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  line-height: 1.25;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  z-index: 5;
+}
+.slider-bubble strong {
+  display: block;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
+}
+.slider-bubble::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--ink);
+}
+.slider-bubble.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .slider-bubble { transition: none; }
+}
+
 /* macro slider zone feedback */
 .zone-feedback { margin-top: 0.6rem; }
 .zone-feedback p {

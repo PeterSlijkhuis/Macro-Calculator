@@ -121,6 +121,19 @@ function fatGkg() {
 }
 
 /**
+ * Reference weight for protein/fat dosing. For higher body-fat levels the
+ * target weight is a better proxy for lean mass than current weight.
+ */
+function refWeightKg() {
+  const weightKg = readWeightKg($("weight"));
+  const targetKg = readWeightKg($("target-weight"));
+  const heightCm = readHeightCm();
+  if (![weightKg, targetKg, heightCm].every(Number.isFinite) || heightCm < 100) return NaN;
+  const bmi = weightKg / Math.pow(heightCm / 100, 2);
+  return bmi >= 30 ? Math.min(weightKg, Math.max(targetKg, weightKg * 0.75)) : weightKg;
+}
+
+/**
  * What a given protein intake (g per kg body weight) means in a calorie
  * deficit — for muscle retention, satiety, and the rest of the budget.
  */
@@ -226,19 +239,59 @@ function carbZone(gPerKg) {
   };
 }
 
-function renderZone(outId, zoneId, gkg, zone, decimals) {
+function renderZone(outId, zoneId, gdayId, gkg, zone, decimals) {
   $(outId).value = gkg.toFixed(decimals);
+  const ref = refWeightKg();
+  $(gdayId).textContent = Number.isFinite(ref) ? `≈ ${Math.round(gkg * ref)} g/day` : "";
   $(zoneId).innerHTML = `
     <span class="zone-chip zone-${zone.tone}"><span aria-hidden="true">${zone.icon}</span> ${zone.label}</span>
     <p>${zone.text}</p>`;
 }
 
 function renderProteinZone() {
-  renderZone("protein-out", "protein-zone", proteinGkg(), proteinZone(proteinGkg()), 1);
+  renderZone("protein-out", "protein-zone", "protein-gday", proteinGkg(), proteinZone(proteinGkg()), 1);
 }
 
 function renderFatZone() {
-  renderZone("fat-out", "fat-zone", fatGkg(), fatZone(fatGkg()), 2);
+  renderZone("fat-out", "fat-zone", "fat-gday", fatGkg(), fatZone(fatGkg()), 2);
+}
+
+/* ---------- slider value bubbles ---------- */
+
+const bubbleTimers = {};
+
+function updateSliderBubble(input) {
+  const wrap = input.closest(".slider-wrap");
+  if (!wrap) return;
+  const bubble = wrap.querySelector(".slider-bubble");
+  const v = parseFloat(input.value);
+  const decimals = input.id === "fat-gkg" ? 2 : 1;
+  const ref = refWeightKg();
+  bubble.innerHTML = Number.isFinite(ref)
+    ? `<strong>${Math.round(v * ref)} g</strong>${v.toFixed(decimals)} g/kg`
+    : `<strong>${v.toFixed(decimals)}</strong>g/kg`;
+  const min = parseFloat(input.min);
+  const max = parseFloat(input.max);
+  const frac = (v - min) / (max - min);
+  // Track the thumb: percentage across the rail, corrected for the ~16px thumb
+  bubble.style.left = `calc(${(frac * 100).toFixed(2)}% + ${((0.5 - frac) * 16).toFixed(1)}px)`;
+}
+
+function showSliderBubble(input) {
+  const wrap = input.closest(".slider-wrap");
+  if (!wrap) return;
+  clearTimeout(bubbleTimers[input.id]);
+  updateSliderBubble(input);
+  wrap.querySelector(".slider-bubble").classList.add("show");
+}
+
+function hideSliderBubble(input, delay) {
+  const wrap = input.closest(".slider-wrap");
+  if (!wrap) return;
+  clearTimeout(bubbleTimers[input.id]);
+  bubbleTimers[input.id] = setTimeout(() => {
+    wrap.querySelector(".slider-bubble").classList.remove("show");
+  }, delay);
 }
 
 /* ---------- core calculation ---------- */
@@ -306,7 +359,7 @@ function calculate() {
   const gkg = proteinGkg();
   const fkg = fatGkg();
   const bmi = weightKg / Math.pow(heightCm / 100, 2);
-  const proteinRefKg = bmi >= 30 ? Math.min(weightKg, Math.max(targetKg, weightKg * 0.75)) : weightKg;
+  const proteinRefKg = refWeightKg();
   let proteinG = gkg * proteinRefKg;
   let fatG = fkg * proteinRefKg;
 
@@ -507,7 +560,24 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target.id === "profile") syncProfileFields();
     if (e.target.id === "protein-gkg") renderProteinZone();
     if (e.target.id === "fat-gkg") renderFatZone();
+    // grams shown for the sliders depend on the weight fields too
+    if (["weight", "target-weight", "height-cm", "height-ft", "height-in"].includes(e.target.id) || e.target.name === "units") {
+      renderProteinZone();
+      renderFatZone();
+    }
+    if (e.target.classList.contains("g-slider")) {
+      showSliderBubble(e.target);
+      hideSliderBubble(e.target, 900);
+    }
     saveState();
     render();
+  });
+
+  document.querySelectorAll(".g-slider").forEach((el) => {
+    el.addEventListener("pointerdown", () => showSliderBubble(el));
+    el.addEventListener("pointerup", () => hideSliderBubble(el, 600));
+    el.addEventListener("pointercancel", () => hideSliderBubble(el, 600));
+    el.addEventListener("focus", () => showSliderBubble(el));
+    el.addEventListener("blur", () => hideSliderBubble(el, 0));
   });
 });

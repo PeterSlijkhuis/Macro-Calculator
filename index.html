@@ -106,22 +106,28 @@
       </div>
 
       <div class="field">
-        <label for="protein-gkg">Protein intake <span class="unit"><output id="protein-out" for="protein-gkg">2.0</output> g per kg of body weight</span></label>
+        <label for="protein-gkg">Protein intake <span class="unit"><output id="protein-out" for="protein-gkg">2.0</output> g per kg of body weight</span> <span class="g-day" id="protein-gday"></span></label>
         <p class="hint">This is the main lever for keeping muscle while dieting. Move the slider to see what each level does to muscle, hunger, and the rest of your calorie budget.</p>
         <div class="blend-row">
           <span class="blend-end">1.0</span>
-          <input type="range" id="protein-gkg" min="1" max="3" step="0.1" value="2" aria-describedby="protein-zone" />
+          <div class="slider-wrap">
+            <input type="range" id="protein-gkg" class="g-slider" min="1" max="3" step="0.1" value="2" aria-describedby="protein-zone" />
+            <div class="slider-bubble" aria-hidden="true"></div>
+          </div>
           <span class="blend-end">3.0</span>
         </div>
         <div id="protein-zone" class="zone-feedback" aria-live="polite"></div>
       </div>
 
       <div class="field">
-        <label for="fat-gkg">Fat intake <span class="unit"><output id="fat-out" for="fat-gkg">0.8</output> g per kg of body weight</span></label>
+        <label for="fat-gkg">Fat intake <span class="unit"><output id="fat-out" for="fat-gkg">0.8</output> g per kg of body weight</span> <span class="g-day" id="fat-gday"></span></label>
         <p class="hint">Fat is where your hormones come from — but at 9 kcal per gram it's also the most expensive macro. Carbs have no slider on purpose: they automatically fill whatever calories remain after protein and fat, so they move when you move these two.</p>
         <div class="blend-row">
           <span class="blend-end">0.4</span>
-          <input type="range" id="fat-gkg" min="0.4" max="1.6" step="0.05" value="0.8" aria-describedby="fat-zone" />
+          <div class="slider-wrap">
+            <input type="range" id="fat-gkg" class="g-slider" min="0.4" max="1.6" step="0.05" value="0.8" aria-describedby="fat-zone" />
+            <div class="slider-bubble" aria-hidden="true"></div>
+          </div>
           <span class="blend-end">1.6</span>
         </div>
         <div id="fat-zone" class="zone-feedback" aria-live="polite"></div>
