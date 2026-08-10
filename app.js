@@ -142,7 +142,7 @@ function proteinZone(gkg) {
     label: "Muscle at risk",
     tone: "critical",
     icon: "⛔",
-    text: "In a calorie deficit this doesn't supply enough amino acids, so your body covers the shortfall by breaking down muscle — the \"cannibalisation\" you want to avoid. It's also the least filling setting: protein is the most satiating macro, and with this little of it hunger bites harder and cravings win more often.",
+    text: "In a calorie deficit this doesn't supply enough amino acids, so your body covers the shortfall by breaking down muscle — the \"cannibalisation\" you want to avoid<sup class=\"cite\"><a href=\"#ref-7\">7</a></sup>. It's also the least filling setting: protein is the most satiating macro<sup class=\"cite\"><a href=\"#ref-10\">10</a></sup>, and with this little of it hunger bites harder and cravings win more often.",
   };
   if (gkg < 1.6) return {
     label: "Bare minimum",
@@ -154,13 +154,13 @@ function proteinZone(gkg) {
     label: "Sweet spot",
     tone: "good",
     icon: "✓",
-    text: "The evidence-based range (1.6–2.2 g/kg) for keeping virtually all your muscle in a deficit — provided you also lift. Bonus: protein is the most filling macro and costs the most calories to digest (~25% of its energy), so hunger is easiest to manage here.",
+    text: "The evidence-based range (1.6–2.2 g/kg)<sup class=\"cite\"><a href=\"#ref-7\">7</a>,<a href=\"#ref-8\">8</a></sup> for keeping virtually all your muscle in a deficit — provided you also lift<sup class=\"cite\"><a href=\"#ref-9\">9</a></sup>. Bonus: protein is the most filling macro<sup class=\"cite\"><a href=\"#ref-10\">10</a></sup> and costs the most calories to digest (20–30% of its energy)<sup class=\"cite\"><a href=\"#ref-11\">11</a></sup>, so hunger is easiest to manage here.",
   };
   if (gkg <= 2.6) return {
     label: "Extra insurance",
     tone: "neutral",
     icon: "🛡",
-    text: "A little more appetite control and a safety margin worth having if you're already lean or cutting briskly — that's when muscle is most at risk. Muscle-wise the benefit beyond 2.2 g/kg is marginal, and every extra gram of protein takes calories away from the carbs that fuel your training.",
+    text: "A little more appetite control and a safety margin worth having if you're already lean or cutting briskly — that's when muscle is most at risk<sup class=\"cite\"><a href=\"#ref-8\">8</a>,<a href=\"#ref-9\">9</a></sup>. Muscle-wise the benefit beyond 2.2 g/kg is marginal<sup class=\"cite\"><a href=\"#ref-7\">7</a></sup>, and every extra gram of protein takes calories away from the carbs that fuel your training.",
   };
   return {
     label: "More than needed",
@@ -179,7 +179,7 @@ function fatZone(gkg) {
     label: "Hormones at risk",
     tone: "critical",
     icon: "⛔",
-    text: "Dietary fat is the raw material for sex hormones (estrogen and testosterone) and carries vitamins A, D, E and K. Held below ~0.6 g/kg, hormone levels, skin, joints, mood and sleep tend to suffer — extra relevant if you're on HRT. This is not the place to save calories.",
+    text: "Dietary fat is the raw material for sex hormones (estrogen and testosterone) and carries vitamins A, D, E and K. Held this low, hormone levels tend to suffer<sup class=\"cite\"><a href=\"#ref-12\">12</a></sup> — extra relevant if you're on HRT. Contest-prep guidance keeps fat at 15–30% of calories even in deep cuts<sup class=\"cite\"><a href=\"#ref-8\">8</a></sup>. This is not the place to save calories.",
   };
   if (gkg < 0.75) return {
     label: "Cutting it close",
@@ -229,7 +229,7 @@ function carbZone(gPerKg) {
     label: "Moderate fuel",
     tone: "good",
     icon: "✓",
-    text: "Solid glycogen for regular training. Carbs are also protein-sparing: with fuel on hand, your body has less reason to burn amino acids for energy — one more layer of protection for your muscle.",
+    text: "Solid glycogen for regular training<sup class=\"cite\"><a href=\"#ref-13\">13</a></sup>. Carbs are also protein-sparing: with fuel on hand, your body has less reason to burn amino acids for energy — one more layer of protection for your muscle.",
   };
   return {
     label: "High fuel",
@@ -404,6 +404,39 @@ function calculate() {
 
 const fmt = (n) => Math.round(n).toLocaleString("en-US");
 
+const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// Previous render's headline numbers and bar widths, so re-renders can
+// animate from the old state instead of snapping.
+let renderCache = null;
+
+function animateCount(el, from, to) {
+  if (!el || !Number.isFinite(from) || from === to || reducedMotion()) return;
+  const t0 = performance.now();
+  const dur = 450;
+  const tick = (now) => {
+    const p = Math.min((now - t0) / dur, 1);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = fmt(from + (to - from) * eased);
+    if (p < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+function animateBarFrom(prevWidths) {
+  if (!prevWidths || reducedMotion()) return;
+  document.querySelectorAll(".macro-bar .seg-fill").forEach((seg) => {
+    const target = seg.style.width;
+    const prev = prevWidths[seg.dataset.macro];
+    if (!prev || prev === target) return;
+    seg.style.transition = "none";
+    seg.style.width = prev;
+    void seg.offsetWidth; // reflow so the next width change transitions
+    seg.style.transition = "";
+    seg.style.width = target;
+  });
+}
+
 function macroBar(r) {
   const pKcal = r.proteinG * 4, cKcal = r.carbsG * 4, fKcal = r.fatG * 9;
   const total = pKcal + cKcal + fKcal || 1;
@@ -416,7 +449,7 @@ function macroBar(r) {
 
   const bars = seg
     .filter((s) => s.kcal > 0)
-    .map((s) => `<div class="seg-fill ${s.cls}" style="width:${pct(s.kcal).toFixed(1)}%" title="${s.name}: ${fmt(s.kcal)} kcal"></div>`)
+    .map((s) => `<div class="seg-fill ${s.cls}" data-macro="${s.cls}" style="width:${pct(s.kcal).toFixed(1)}%" title="${s.name}: ${fmt(s.kcal)} kcal"></div>`)
     .join("");
 
   const legend = seg
@@ -467,7 +500,7 @@ function render() {
     <div class="card">
       <div class="hero-number">
         <div class="tile-label">${r.losing ? "Daily calorie target" : "Daily maintenance calories"}</div>
-        <div class="hero-value">${fmt(r.calories)} <span class="hero-unit">kcal</span></div>
+        <div class="hero-value"><span data-count="cal">${fmt(r.calories)}</span> <span class="hero-unit">kcal</span></div>
         ${r.losing ? `<div class="tile-sub">a ${fmt(r.deficit)} kcal/day deficit below your ${fmt(r.tdee)} kcal maintenance</div>` : ""}
       </div>
 
@@ -495,13 +528,13 @@ function render() {
       <div class="tiles">
         <div class="tile">
           <div class="tile-label">Resting metabolism (BMR)</div>
-          <div class="tile-value">${fmt(r.bmr)} kcal</div>
-          <div class="tile-sub">Mifflin–St Jeor</div>
+          <div class="tile-value"><span data-count="bmr">${fmt(r.bmr)}</span> kcal</div>
+          <div class="tile-sub">Mifflin–St Jeor <sup class="cite"><a href="#ref-1">1</a></sup></div>
         </div>
         <div class="tile">
           <div class="tile-label">Maintenance (TDEE)</div>
-          <div class="tile-value">${fmt(r.tdee)} kcal</div>
-          <div class="tile-sub">BMR × activity</div>
+          <div class="tile-value"><span data-count="tdee">${fmt(r.tdee)}</span> kcal</div>
+          <div class="tile-sub">BMR × activity <sup class="cite"><a href="#ref-3">3</a></sup></div>
         </div>
         ${timeline}
       </div>
@@ -510,9 +543,20 @@ function render() {
 
       <div class="notice tip">
         <span class="notice-icon" aria-hidden="true">💪</span>
-        <p><strong>Keep the muscle:</strong> a calorie deficit only spares muscle if you give your body a reason to keep it. Do resistance training 2–4× a week, hit the protein number daily (spread over 3–5 meals), and sleep 7–9 hours.</p>
+        <p><strong>Keep the muscle:</strong> a calorie deficit only spares muscle if you give your body a reason to keep it<sup class="cite"><a href="#ref-9">9</a></sup>. Do resistance training 2–4× a week, hit the protein number daily (spread over 3–5 meals), and sleep 7–9 hours.</p>
       </div>
     </div>`;
+
+  // Animate from the previous render's state instead of snapping.
+  if (renderCache) {
+    animateCount(out.querySelector('[data-count="cal"]'), renderCache.calories, r.calories);
+    animateCount(out.querySelector('[data-count="bmr"]'), renderCache.bmr, r.bmr);
+    animateCount(out.querySelector('[data-count="tdee"]'), renderCache.tdee, r.tdee);
+    animateBarFrom(renderCache.widths);
+  }
+  const widths = {};
+  out.querySelectorAll(".macro-bar .seg-fill").forEach((seg) => { widths[seg.dataset.macro] = seg.style.width; });
+  renderCache = { calories: r.calories, bmr: r.bmr, tdee: r.tdee, widths };
 }
 
 /* ---------- wiring ---------- */
@@ -580,4 +624,22 @@ document.addEventListener("DOMContentLoaded", () => {
     el.addEventListener("focus", () => showSliderBubble(el));
     el.addEventListener("blur", () => hideSliderBubble(el, 0));
   });
+
+  // Reveal the science/references cards as they scroll into view.
+  if ("IntersectionObserver" in window) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("in-view");
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -40px 0px" }
+    );
+    document.querySelectorAll(".reveal").forEach((el) => observer.observe(el));
+  } else {
+    document.querySelectorAll(".reveal").forEach((el) => el.classList.add("in-view"));
+  }
 });

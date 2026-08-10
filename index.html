@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Macro Calculator — lose fat, keep muscle</title>
-  <meta name="description" content="Calculate your daily calories and macros to lose fat at a healthy pace while preserving muscle. Metric &amp; imperial, inclusive of trans and non-binary people on hormone therapy." />
+  <meta name="description" content="An open-science calculator for daily calories and macros to lose fat while preserving muscle. Metric &amp; imperial, inclusive of trans and non-binary people on hormone therapy, every formula cited to peer-reviewed research." />
   <link rel="stylesheet" href="styles.css" />
   <link rel="icon" href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'&gt;&lt;text y='.9em' font-size='90'&gt;🥗&lt;/text&gt;&lt;/svg&gt;" />
 </head>
@@ -13,6 +13,11 @@
     <header class="hero">
       <h1>Macro Calculator</h1>
       <p class="tagline">Daily calories and macros to lose fat at a healthy pace — with enough protein to hold on to your muscle.</p>
+      <div class="hero-badges">
+        <span class="badge">📚 Every number referenced</span>
+        <a class="badge" href="#science">🔬 Open methods</a>
+        <span class="badge">🛡️ Runs 100% in your browser</span>
+      </div>
     </header>
 
     <form id="calc-form" class="card" novalidate>
@@ -57,7 +62,7 @@
 
       <div class="field">
         <label for="profile">Hormonal profile</label>
-        <p class="hint">Metabolism formulas depend on hormone-driven body composition, not identity. Pick what best matches your hormonal situation — there's an option for every stage of transition.</p>
+        <p class="hint">Metabolism formulas depend on hormone-driven body composition, not identity<sup class="cite"><a href="#ref-14">14</a>,<a href="#ref-15">15</a></sup>. Pick what best matches your hormonal situation — there's an option for every stage of transition.</p>
         <select id="profile">
           <option value="male">Male (typical testosterone-dominant)</option>
           <option value="female">Female (typical estrogen-dominant)</option>
@@ -136,9 +141,100 @@
 
     <section id="results" class="results" aria-live="polite"></section>
 
+    <section class="card science reveal" id="science">
+      <h2 class="sci-title">How the maths works</h2>
+      <p class="sci-intro">Nothing here is a black box. Every step below runs in your browser, in
+        <a href="https://github.com/PeterSlijkhuis/Macro-Calculator/blob/main/app.js">~300 lines of readable JavaScript</a>,
+        and every modelling decision links to the peer-reviewed work it's based on. Where the evidence is a simplification, we say so.</p>
+
+      <div class="sci-step">
+        <div class="sci-num">1</div>
+        <div class="sci-body">
+          <h3>Resting metabolism</h3>
+          <p class="formula">BMR = 10·weight<sub>kg</sub> + 6.25·height<sub>cm</sub> − 5·age + s</p>
+          <p>The Mifflin–St Jeor equation<sup class="cite"><a href="#ref-1">1</a></sup>, the most accurate of the common predictive equations in a systematic review of validation studies<sup class="cite"><a href="#ref-2">2</a></sup>. The constant <em>s</em> is +5 for a testosterone-dominant metabolism and −161 for an estrogen-dominant one — a difference driven by hormone-dependent body composition, not identity. Because gender-affirming hormone therapy measurably shifts lean mass and fat distribution over the first months of treatment<sup class="cite"><a href="#ref-14">14</a>,<a href="#ref-15">15</a></sup>, we interpolate <em>s</em> linearly over the first 6 months on HRT rather than forcing a binary choice.</p>
+        </div>
+      </div>
+
+      <div class="sci-step">
+        <div class="sci-num">2</div>
+        <div class="sci-body">
+          <h3>Maintenance calories</h3>
+          <p class="formula">TDEE = BMR × PAL <span class="formula-note">(1.2 – 1.9)</span></p>
+          <p>Physical activity level multipliers follow the FAO/WHO/UNU human energy requirements framework<sup class="cite"><a href="#ref-3">3</a></sup>, from sedentary (1.2) to athlete (1.9).</p>
+        </div>
+      </div>
+
+      <div class="sci-step">
+        <div class="sci-num">3</div>
+        <div class="sci-body">
+          <h3>The deficit</h3>
+          <p class="formula">deficit = pace<sub>%BW/wk</sub> × weight × 7700 ÷ 7 <span class="formula-note">capped at 25% of TDEE</span></p>
+          <p>Slower cuts protect muscle: athletes losing ~0.7% of body weight per week kept (and even gained) lean mass, while ~1.4%/week lost it<sup class="cite"><a href="#ref-6">6</a></sup> — hence the 0.5–1% pace options and the hard 25% cap<sup class="cite"><a href="#ref-8">8</a></sup>. The ≈7,700 kcal per kg of fat tissue figure comes from Wishnofsky's classic analysis<sup class="cite"><a href="#ref-4">4</a></sup>; it's a useful planning constant, though real-world loss per kcal shifts as body composition changes<sup class="cite"><a href="#ref-5">5</a></sup>, so treat the timeline as an estimate, not a promise.</p>
+        </div>
+      </div>
+
+      <div class="sci-step">
+        <div class="sci-num">4</div>
+        <div class="sci-body">
+          <h3>Protein — the muscle insurance</h3>
+          <p class="formula">protein = 1.0 – 3.0 g × reference weight<sub>kg</sub> <span class="formula-note">default 2.0</span></p>
+          <p>A meta-analysis of 49 trials found benefits of protein for lean mass plateau around ~1.6 g/kg/day, with the confidence interval reaching ~2.2<sup class="cite"><a href="#ref-7">7</a></sup> — that's our "sweet spot". Dieting athletes may benefit from the higher end and beyond, especially when lean<sup class="cite"><a href="#ref-8">8</a>,<a href="#ref-9">9</a></sup>. Protein is also the most satiating macronutrient<sup class="cite"><a href="#ref-10">10</a></sup> and has the highest thermic effect — 20–30% of its calories are spent digesting it<sup class="cite"><a href="#ref-11">11</a></sup>. Above a BMI of 30 we dose protein on your target weight instead of current weight, a practical stand-in for the fat-free-mass dosing used in the literature<sup class="cite"><a href="#ref-8">8</a></sup>.</p>
+        </div>
+      </div>
+
+      <div class="sci-step">
+        <div class="sci-num">5</div>
+        <div class="sci-body">
+          <h3>Fat — the hormone floor</h3>
+          <p class="formula">fat = 0.4 – 1.6 g × reference weight<sub>kg</sub> <span class="formula-note">default 0.8 · warning below 0.6</span></p>
+          <p>Meta-analysis shows low-fat diets reduce testosterone levels in men<sup class="cite"><a href="#ref-12">12</a></sup>, and contest-prep reviews recommend keeping fat at roughly 15–30% of calories even in deep cuts<sup class="cite"><a href="#ref-8">8</a></sup>. Dietary fat also carries the fat-soluble vitamins A, D, E and K.</p>
+        </div>
+      </div>
+
+      <div class="sci-step">
+        <div class="sci-num">6</div>
+        <div class="sci-body">
+          <h3>Carbs — the remainder, on purpose</h3>
+          <p class="formula">carbs = (calories − protein×4 − fat×9) ÷ 4</p>
+          <p>Energy balance is a budget: once protein and fat are set, carbs are what's left — making that explicit is more honest than pretending three independent dials could all be free. The zone labels reflect sports-nutrition guidance on carbohydrate needs scaling with training load<sup class="cite"><a href="#ref-13">13</a></sup>.</p>
+        </div>
+      </div>
+
+      <div class="open-science">
+        <h3>Open science, open source</h3>
+        <ul>
+          <li><strong>Auditable</strong> — the <a href="https://github.com/PeterSlijkhuis/Macro-Calculator">full source</a> is MIT-licensed; every constant above appears verbatim in the code.</li>
+          <li><strong>Private</strong> — no server, no analytics, no account. Your inputs never leave your device (they're saved in your browser's local storage only).</li>
+          <li><strong>Honest about limits</strong> — these are population-level equations with real individual variance (±10% on BMR is common<sup class="cite"><a href="#ref-2">2</a></sup>). Track your actual weight trend for 2–3 weeks and adjust.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="card refs reveal" id="references">
+      <h2 class="sci-title">References</h2>
+      <ol class="ref-list">
+        <li id="ref-1">Mifflin MD, St Jeor ST, Hill LA, Scott BJ, Daugherty SA, Koh YO. A new predictive equation for resting energy expenditure in healthy individuals. <em>Am J Clin Nutr.</em> 1990;51(2):241–247. <a href="https://doi.org/10.1093/ajcn/51.2.241">doi:10.1093/ajcn/51.2.241</a></li>
+        <li id="ref-2">Frankenfield D, Roth-Yousey L, Compher C. Comparison of predictive equations for resting metabolic rate in healthy nonobese and obese adults: a systematic review. <em>J Am Diet Assoc.</em> 2005;105(5):775–789. <a href="https://doi.org/10.1016/j.jada.2005.02.005">doi:10.1016/j.jada.2005.02.005</a></li>
+        <li id="ref-3">FAO/WHO/UNU. Human energy requirements: report of a Joint FAO/WHO/UNU Expert Consultation. Rome; 2001. <a href="https://www.fao.org/3/y5686e/y5686e00.htm">fao.org/3/y5686e</a></li>
+        <li id="ref-4">Wishnofsky M. Caloric equivalents of gained or lost weight. <em>Am J Clin Nutr.</em> 1958;6(5):542–546. <a href="https://doi.org/10.1093/ajcn/6.5.542">doi:10.1093/ajcn/6.5.542</a></li>
+        <li id="ref-5">Hall KD. What is the required energy deficit per unit weight loss? <em>Int J Obes.</em> 2008;32(3):573–576. <a href="https://doi.org/10.1038/sj.ijo.0803720">doi:10.1038/sj.ijo.0803720</a></li>
+        <li id="ref-6">Garthe I, Raastad T, Refsnes PE, Koivisto A, Sundgot-Borgen J. Effect of two different weight-loss rates on body composition and strength and power-related performance in elite athletes. <em>Int J Sport Nutr Exerc Metab.</em> 2011;21(2):97–104. <a href="https://doi.org/10.1123/ijsnem.21.2.97">doi:10.1123/ijsnem.21.2.97</a></li>
+        <li id="ref-7">Morton RW, Murphy KT, McKellar SR, et al. A systematic review, meta-analysis and meta-regression of the effect of protein supplementation on resistance training-induced gains in muscle mass and strength in healthy adults. <em>Br J Sports Med.</em> 2018;52(6):376–384. <a href="https://doi.org/10.1136/bjsports-2017-097608">doi:10.1136/bjsports-2017-097608</a></li>
+        <li id="ref-8">Helms ER, Aragon AA, Fitschen PJ. Evidence-based recommendations for natural bodybuilding contest preparation: nutrition and supplementation. <em>J Int Soc Sports Nutr.</em> 2014;11:20. <a href="https://doi.org/10.1186/1550-2783-11-20">doi:10.1186/1550-2783-11-20</a></li>
+        <li id="ref-9">Longland TM, Oikawa SY, Mitchell CJ, Devries MC, Phillips SM. Higher compared with lower dietary protein during an energy deficit combined with intense exercise promotes greater lean mass gain and fat mass loss. <em>Am J Clin Nutr.</em> 2016;103(3):738–746. <a href="https://doi.org/10.3945/ajcn.115.119339">doi:10.3945/ajcn.115.119339</a></li>
+        <li id="ref-10">Leidy HJ, Clifton PM, Astrup A, et al. The role of protein in weight loss and maintenance. <em>Am J Clin Nutr.</em> 2015;101(6):1320S–1329S. <a href="https://doi.org/10.3945/ajcn.114.084038">doi:10.3945/ajcn.114.084038</a></li>
+        <li id="ref-11">Westerterp KR. Diet induced thermogenesis. <em>Nutr Metab (Lond).</em> 2004;1(1):5. <a href="https://doi.org/10.1186/1743-7075-1-5">doi:10.1186/1743-7075-1-5</a></li>
+        <li id="ref-12">Whittaker J, Wu K. Low-fat diets and testosterone in men: systematic review and meta-analysis of intervention studies. <em>J Steroid Biochem Mol Biol.</em> 2021;210:105878. <a href="https://doi.org/10.1016/j.jsbmb.2021.105878">doi:10.1016/j.jsbmb.2021.105878</a></li>
+        <li id="ref-13">Burke LM, Hawley JA, Wong SHS, Jeukendrup AE. Carbohydrates for training and competition. <em>J Sports Sci.</em> 2011;29(sup1):S17–S27. <a href="https://doi.org/10.1080/02640414.2011.585473">doi:10.1080/02640414.2011.585473</a></li>
+        <li id="ref-14">Klaver M, de Blok CJM, Wiepjes CM, et al. Changes in regional body fat, lean body mass and body shape in trans persons using cross-sex hormonal therapy: results from a multicenter prospective study. <em>Eur J Endocrinol.</em> 2018;178(2):163–171. <a href="https://doi.org/10.1530/EJE-17-0496">doi:10.1530/EJE-17-0496</a></li>
+        <li id="ref-15">Spanos C, Bretherton I, Zajac JD, Cheung AS. Effects of gender-affirming hormone therapy on insulin resistance and body composition in transgender individuals: a systematic review. <em>World J Diabetes.</em> 2020;11(3):66–77. <a href="https://doi.org/10.4239/wjd.v11.i3.66">doi:10.4239/wjd.v11.i3.66</a></li>
+      </ol>
+    </section>
+
     <footer class="foot">
       <p><strong>Not medical advice.</strong> This tool gives evidence-based estimates for healthy adults. Individual needs vary — talk to a doctor or registered dietitian before big dietary changes, especially if you're under 18, pregnant, have a medical condition, an eating-disorder history, or are on hormone therapy.</p>
-      <p>Formulas: Mifflin–St Jeor BMR · protein 1.6–2.2 g/kg to preserve muscle in a deficit · deficit capped at 25% of maintenance. <a href="https://github.com/PeterSlijkhuis/Macro-Calculator">Source on GitHub</a></p>
+      <p>See <a href="#science">how the maths works</a> and the <a href="#references">reference list</a> above. <a href="https://github.com/PeterSlijkhuis/Macro-Calculator">MIT-licensed source on GitHub</a>.</p>
     </footer>
   </main>
 
