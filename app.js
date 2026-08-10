@@ -11,7 +11,26 @@ const MIN_CALORIES = 1200;    // below this, flag as too low without supervision
 
 const FAT_FLOOR_G_PER_KG = 0.5; // absolute floor when the budget clamp kicks in
 
+const REGISTER_KEY = "macro-calc-register";
+
 const $ = (id) => document.getElementById(id);
+
+/* ---------- explanation register (academic / conversational) ---------- */
+
+function currentRegister() {
+  return document.documentElement.dataset.register === "conversational" ? "conversational" : "academic";
+}
+
+// Pick the string for the active register from a {academic, conversational} pair.
+// Plain strings (no register split) pass through unchanged.
+function reg(pair) {
+  if (typeof pair === "string") return pair;
+  return pair[currentRegister()];
+}
+
+function applyRegister(value) {
+  document.documentElement.dataset.register = value === "conversational" ? "conversational" : "academic";
+}
 
 /* ---------- unit handling ---------- */
 
@@ -87,7 +106,7 @@ function convertFieldValues() {
 /**
  * Returns a blend factor b in [0, 1]:
  * 0 = typical estrogen-dominant metabolism, 1 = typical testosterone-dominant.
- * The Mifflin–St Jeor sex constant is interpolated: s = -161 + 166 * b.
+ * The Mifflin-St Jeor sex constant is interpolated: s = -161 + 166 * b.
  *
  * For people on HRT the factor shifts linearly from the pre-HRT profile to the
  * hormone-matched profile over the first HRT_SETTLE_MONTHS months, reflecting
@@ -135,75 +154,107 @@ function refWeightKg() {
 
 /**
  * What a given protein intake (g per kg body weight) means in a calorie
- * deficit — for muscle retention, satiety, and the rest of the budget.
+ * deficit: muscle retention, satiety, and the rest of the budget. Every
+ * zone carries an academic and a conversational explanation of the same
+ * evidence.
  */
 function proteinZone(gkg) {
   if (gkg < 1.4) return {
-    label: "Muscle at risk",
+    label: { academic: "Catabolic risk", conversational: "Muscle at risk" },
     tone: "critical",
     icon: "⛔",
-    text: "In a calorie deficit this doesn't supply enough amino acids, so your body covers the shortfall by breaking down muscle — the \"cannibalisation\" you want to avoid<sup class=\"cite\"><a href=\"#ref-7\">7</a></sup>. It's also the least filling setting: protein is the most satiating macro<sup class=\"cite\"><a href=\"#ref-10\">10</a></sup>, and with this little of it hunger bites harder and cravings win more often.",
+    text: {
+      academic: "At this intake, protein availability is generally insufficient to offset a caloric deficit without loss of skeletal muscle protein<sup class=\"cite\"><a href=\"#ref-7\">7</a></sup>. Protein is also the most satiating macronutrient<sup class=\"cite\"><a href=\"#ref-10\">10</a></sup>; at low intakes, hunger and cravings tend to increase.",
+      conversational: "At this level, your body doesn't get enough protein to cover the shortfall, so it starts breaking down muscle along with fat<sup class=\"cite\"><a href=\"#ref-7\">7</a></sup>. It's also the least filling setting: protein keeps you full longer<sup class=\"cite\"><a href=\"#ref-10\">10</a></sup>, so hunger and cravings tend to win more often here.",
+    },
   };
   if (gkg < 1.6) return {
-    label: "Bare minimum",
+    label: { academic: "Suboptimal", conversational: "Bare minimum" },
     tone: "serious",
     icon: "⚠",
-    text: "Enough to slow muscle loss, but below the range studied for people dieting with training. Expect to give up some muscle along with the fat, and to feel hungrier between meals than you would in the sweet spot.",
+    text: {
+      academic: "This intake slows the rate of muscle loss relative to lower levels but remains below the range studied in dieting individuals who train. Some reduction in lean mass alongside fat mass should be expected, along with lower satiety than in the optimal range.",
+      conversational: "This slows muscle loss, but it's still below what's usually studied for people dieting while training. Expect to lose a little muscle along with the fat, and to feel hungrier between meals than in the sweet spot.",
+    },
   };
   if (gkg <= 2.2) return {
-    label: "Sweet spot",
+    label: { academic: "Optimal range", conversational: "Sweet spot" },
     tone: "good",
     icon: "✓",
-    text: "The evidence-based range (1.6–2.2 g/kg)<sup class=\"cite\"><a href=\"#ref-7\">7</a>,<a href=\"#ref-8\">8</a></sup> for keeping virtually all your muscle in a deficit — provided you also lift<sup class=\"cite\"><a href=\"#ref-9\">9</a></sup>. Bonus: protein is the most filling macro<sup class=\"cite\"><a href=\"#ref-10\">10</a></sup> and costs the most calories to digest (20–30% of its energy)<sup class=\"cite\"><a href=\"#ref-11\">11</a></sup>, so hunger is easiest to manage here.",
+    text: {
+      academic: "This range (1.6–2.2 g/kg) is associated with near-complete preservation of muscle mass during a deficit, provided resistance training continues<sup class=\"cite\"><a href=\"#ref-7\">7</a>,<a href=\"#ref-8\">8</a>,<a href=\"#ref-9\">9</a></sup>. Protein also has the highest satiety value<sup class=\"cite\"><a href=\"#ref-10\">10</a></sup> and thermic effect of the three macronutrients, with 20 to 30 percent of its calories spent on digestion<sup class=\"cite\"><a href=\"#ref-11\">11</a></sup>, which supports appetite control.",
+      conversational: "This range (1.6–2.2 g/kg) is the sweet spot for keeping virtually all your muscle in a deficit, as long as you keep lifting<sup class=\"cite\"><a href=\"#ref-7\">7</a>,<a href=\"#ref-8\">8</a>,<a href=\"#ref-9\">9</a></sup>. Bonus: protein is the most filling macro<sup class=\"cite\"><a href=\"#ref-10\">10</a></sup> and burns the most calories just to digest, about 20 to 30% of its own energy<sup class=\"cite\"><a href=\"#ref-11\">11</a></sup>, so hunger is easiest to manage here.",
+    },
   };
   if (gkg <= 2.6) return {
-    label: "Extra insurance",
+    label: { academic: "Added margin", conversational: "Extra insurance" },
     tone: "neutral",
     icon: "🛡",
-    text: "A little more appetite control and a safety margin worth having if you're already lean or cutting briskly — that's when muscle is most at risk<sup class=\"cite\"><a href=\"#ref-8\">8</a>,<a href=\"#ref-9\">9</a></sup>. Muscle-wise the benefit beyond 2.2 g/kg is marginal<sup class=\"cite\"><a href=\"#ref-7\">7</a></sup>, and every extra gram of protein takes calories away from the carbs that fuel your training.",
+    text: {
+      academic: "Additional appetite control and a margin of safety, most useful when body fat is already low or the deficit is aggressive, the conditions under which muscle loss risk is highest<sup class=\"cite\"><a href=\"#ref-8\">8</a>,<a href=\"#ref-9\">9</a></sup>. The added muscle-retention benefit above 2.2 g/kg is marginal<sup class=\"cite\"><a href=\"#ref-7\">7</a></sup>, and each extra gram of protein displaces calories that would otherwise support carbohydrate intake.",
+      conversational: "A bit more appetite control and a safety margin, worth having if you're already lean or cutting hard, since that's when muscle is most at risk<sup class=\"cite\"><a href=\"#ref-8\">8</a>,<a href=\"#ref-9\">9</a></sup>. The muscle-protection benefit above 2.2 g/kg is marginal<sup class=\"cite\"><a href=\"#ref-7\">7</a></sup>, and every extra gram of protein takes calories away from the carbs that fuel your training.",
+    },
   };
   return {
-    label: "More than needed",
+    label: { academic: "Above requirement", conversational: "More than needed" },
     tone: "serious",
     icon: "⚠",
-    text: "No extra muscle protection up here — the retention benefit plateaus. It mostly crowds carbs and fat out of your budget (harder workouts, low energy) and is a chore to eat every day. Not harmful for healthy kidneys, just pointless.",
+    text: {
+      academic: "No additional muscle-retention benefit accrues beyond this point; the effect has plateaued. Excess protein primarily displaces carbohydrate and fat from the budget, which can reduce training capacity and daily energy, though it poses no known risk to kidney function in healthy individuals.",
+      conversational: "No extra muscle protection up here, the benefit already plateaued. It mostly crowds carbs and fat out of your budget (harder workouts, lower energy) and becomes a chore to eat every day. Not harmful for healthy kidneys, just unnecessary.",
+    },
   };
 }
 
 /**
- * What a given fat intake (g per kg body weight) means — for hormone health,
+ * What a given fat intake (g per kg body weight) means for hormone health,
  * satiety, and how much of the calorie budget is left for carbs.
  */
 function fatZone(gkg) {
   if (gkg < 0.6) return {
-    label: "Hormones at risk",
+    label: { academic: "Hormonal risk", conversational: "Hormones at risk" },
     tone: "critical",
     icon: "⛔",
-    text: "Dietary fat is the raw material for sex hormones (estrogen and testosterone) and carries vitamins A, D, E and K. Held this low, hormone levels tend to suffer<sup class=\"cite\"><a href=\"#ref-12\">12</a></sup> — extra relevant if you're on HRT. Contest-prep guidance keeps fat at 15–30% of calories even in deep cuts<sup class=\"cite\"><a href=\"#ref-8\">8</a></sup>. This is not the place to save calories.",
+    text: {
+      academic: "Dietary fat supplies the precursor molecules for steroid hormone synthesis, including estrogen and testosterone, and carries the fat-soluble vitamins A, D, E, and K. Sustained intake below this threshold is associated with reduced hormone levels<sup class=\"cite\"><a href=\"#ref-12\">12</a></sup>, a consideration of particular relevance during hormone therapy. Contest-preparation guidance recommends maintaining fat at 15 to 30 percent of calories even during aggressive deficits<sup class=\"cite\"><a href=\"#ref-8\">8</a></sup>.",
+      conversational: "Dietary fat is the raw material for hormones like estrogen and testosterone, and it carries vitamins A, D, E, and K. Held this low for a while, hormone levels tend to suffer<sup class=\"cite\"><a href=\"#ref-12\">12</a></sup>, which matters even more if you're on HRT. Even in deep cuts, guidance keeps fat at 15 to 30% of calories<sup class=\"cite\"><a href=\"#ref-8\">8</a></sup>. This isn't the place to save calories.",
+    },
   };
   if (gkg < 0.75) return {
-    label: "Cutting it close",
+    label: { academic: "Marginal", conversational: "Cutting it close" },
     tone: "serious",
     icon: "⚠",
-    text: "Workable for a short, disciplined cut, but there's little margin. Watch for low energy, dry skin, poor sleep or cycle/hormonal changes, and nudge the slider up if any of those show up.",
+    text: {
+      academic: "Workable for a brief, disciplined phase, but the margin is small. Indicators worth monitoring include low energy, dry skin, poor sleep, and changes in menstrual cycle or hormonal symptoms; any of these warrant increasing intake.",
+      conversational: "Workable for a short, disciplined cut, but there's not much room to spare. Watch for low energy, dry skin, poor sleep, or cycle and hormonal changes, and nudge the slider up if any of those show up.",
+    },
   };
   if (gkg <= 1.1) return {
-    label: "Sweet spot",
+    label: { academic: "Optimal range", conversational: "Sweet spot" },
     tone: "good",
     icon: "✓",
-    text: "Enough fat to keep hormone production and vitamin absorption running smoothly, it slows digestion (so meals keep you full for longer), and it still leaves solid room in the budget for the carbs that fuel your training.",
+    text: {
+      academic: "Sufficient to support hormone production and fat-soluble vitamin absorption. Fat also slows gastric emptying, extending satiety, while leaving adequate room in the calorie budget for the carbohydrate intake that supports training.",
+      conversational: "Enough fat to keep hormone production and vitamin absorption running smoothly. It also slows digestion, so meals keep you full for longer, and it still leaves plenty of room in the budget for the carbs that fuel your training.",
+    },
   };
   if (gkg <= 1.35) return {
-    label: "Higher fat",
+    label: { academic: "Above requirement", conversational: "Higher fat" },
     tone: "neutral",
     icon: "🥑",
-    text: "A fine preference if fatty foods are what keep you satisfied — your hormones were fully covered a while ago. Just remember every gram of fat costs 9 kcal, more than double protein or carbs, so carb room shrinks quickly up here.",
+    text: {
+      academic: "A reasonable preference if fat-dense foods aid dietary adherence; hormonal needs are already met at this point. Each gram of fat costs 9 kcal, more than double protein or carbohydrate, so the remaining carbohydrate budget shrinks quickly beyond this level.",
+      conversational: "A fine choice if fatty foods are what keep you satisfied. Your hormones were already covered a while back. Just remember every gram of fat costs 9 kcal, more than double protein or carbs, so carb room shrinks fast up here.",
+    },
   };
   return {
-    label: "Carb squeeze",
+    label: { academic: "Displacing carbohydrate", conversational: "Carb squeeze" },
     tone: "serious",
     icon: "⚠",
-    text: "Beyond any hormonal benefit — at this level fat is mostly displacing carbs from the budget, which makes hard training sessions feel flat. Fine on a deliberate low-carb approach; otherwise slide it back down.",
+    text: {
+      academic: "Beyond any hormonal benefit. At this level, fat intake substantially displaces carbohydrate from the budget, which can reduce training capacity during intense sessions. Appropriate for a deliberate low-carbohydrate approach; otherwise, consider reducing intake.",
+      conversational: "Beyond any hormonal benefit. At this level, fat is mostly squeezing carbs out of the budget, which makes hard training sessions feel flat. Fine if you're deliberately going low-carb, otherwise slide it back down.",
+    },
   };
 }
 
@@ -214,28 +265,40 @@ function fatZone(gkg) {
  */
 function carbZone(gPerKg) {
   if (gPerKg < 0.75) return {
-    label: "Keto territory",
+    label: { academic: "Ketogenic range", conversational: "Keto territory" },
     tone: "serious",
     icon: "⚠",
-    text: "Very low carb. Doable if it's a deliberate choice (some people love it for appetite control), but expect flat, heavy workouts for the first weeks and less top-end in intense training. To free up carb room, nudge protein or fat down, or pick a gentler pace.",
+    text: {
+      academic: "A markedly low carbohydrate intake. Sustainable if adopted deliberately; some individuals report improved appetite control at this level, but reduced training capacity should be expected during the initial adaptation period, particularly for high-intensity efforts. To increase carbohydrate room, reduce the protein or fat setting, or select a slower pace.",
+      conversational: "Very low carb. Totally doable if it's a deliberate choice (some people like it for appetite control), but expect flat, heavy workouts for the first few weeks, and less top-end in intense training. To free up carb room, nudge protein or fat down, or pick a gentler pace.",
+    },
   };
   if (gPerKg < 2) return {
-    label: "Low fuel",
+    label: { academic: "Limited fuel", conversational: "Low fuel" },
     tone: "neutral",
     icon: "🔋",
-    text: "Enough for daily life and light training. Hard or long sessions will dip into reserves — if workouts start feeling flat, this number is the reason. Time most of these carbs around training for the best return.",
+    text: {
+      academic: "Sufficient for daily activity and light training. Hard or prolonged sessions will draw on glycogen reserves; reduced training performance at this level is attributable to carbohydrate availability. Concentrating intake around training sessions improves utilization.",
+      conversational: "Enough for daily life and light training. Hard or long sessions will dip into your reserves; if workouts start feeling flat, this is probably why. Time most of these carbs around training for the best return.",
+    },
   };
   if (gPerKg <= 4) return {
-    label: "Moderate fuel",
+    label: { academic: "Adequate fuel", conversational: "Moderate fuel" },
     tone: "good",
     icon: "✓",
-    text: "Solid glycogen for regular training<sup class=\"cite\"><a href=\"#ref-13\">13</a></sup>. Carbs are also protein-sparing: with fuel on hand, your body has less reason to burn amino acids for energy — one more layer of protection for your muscle.",
+    text: {
+      academic: "Adequate glycogen replenishment for regular training<sup class=\"cite\"><a href=\"#ref-13\">13</a></sup>. Carbohydrate is also protein-sparing: when glycogen is available, the body relies less on amino acid oxidation for energy, providing an additional layer of muscle protection.",
+      conversational: "Solid glycogen for regular training<sup class=\"cite\"><a href=\"#ref-13\">13</a></sup>. Carbs are also protein-sparing: with fuel on hand, your body has less reason to burn muscle for energy, one more layer of protection for the muscle you're working to keep.",
+    },
   };
   return {
-    label: "High fuel",
+    label: { academic: "High fuel", conversational: "High fuel" },
     tone: "good",
     icon: "🚀",
-    text: "Plenty of glycogen — well suited to high training volumes or a physical job. If you're not that active, some of this budget might serve you better as fat (satiety) or a slightly brisker pace.",
+    text: {
+      academic: "Ample glycogen availability, well suited to high training volumes or physically demanding occupations. If activity level is lower than this, reallocating part of this budget toward fat (for satiety) or a marginally faster pace may be more appropriate.",
+      conversational: "Plenty of glycogen, well suited to high training volumes or a physical job. If you're not that active, some of this budget might serve you better as fat (more filling) or a slightly brisker pace.",
+    },
   };
 }
 
@@ -244,8 +307,8 @@ function renderZone(outId, zoneId, gdayId, gkg, zone, decimals) {
   const ref = refWeightKg();
   $(gdayId).textContent = Number.isFinite(ref) ? `≈ ${Math.round(gkg * ref)} g/day` : "";
   $(zoneId).innerHTML = `
-    <span class="zone-chip zone-${zone.tone}"><span aria-hidden="true">${zone.icon}</span> ${zone.label}</span>
-    <p>${zone.text}</p>`;
+    <span class="zone-chip zone-${zone.tone}"><span aria-hidden="true">${zone.icon}</span> ${reg(zone.label)}</span>
+    <p>${reg(zone.text)}</p>`;
 }
 
 function renderProteinZone() {
@@ -327,9 +390,10 @@ function calculate() {
       deficit = maxDeficit;
       weeklyLossKg = (deficit * 7) / KCAL_PER_KG_FAT;
       if (overshoot > 1.05) {
-        warnings.push(
-          "Your chosen pace would need a deficit larger than 25% of maintenance, which risks muscle loss and rebound. We've capped it at 25% — pick a gentler pace for a smoother ride."
-        );
+        warnings.push({
+          academic: "The selected pace would require a deficit exceeding 25 percent of maintenance calories, which increases the risk of muscle loss and metabolic rebound. Intake has been capped at 25 percent; a slower pace is recommended.",
+          conversational: "Your chosen pace would need a deficit bigger than 25% of maintenance, which risks losing muscle and rebounding later. We've capped it at 25%, so pick a gentler pace for a smoother ride.",
+        });
       }
     }
 
@@ -337,9 +401,10 @@ function calculate() {
     weeks = (weightKg - targetKg) / weeklyLossKg;
 
     if (calories < MIN_CALORIES) {
-      warnings.push(
-        `This lands below ${MIN_CALORIES} kcal/day, which is hard to meet nutrient needs on without medical supervision. Choose a gentler pace, or talk to a professional.`
-      );
+      warnings.push({
+        academic: `Estimated intake falls below ${MIN_CALORIES} kcal/day, a level generally considered inadequate to meet nutrient needs without clinical supervision. Selecting a slower pace, or consulting a qualified professional, is recommended.`,
+        conversational: `This lands under ${MIN_CALORIES} kcal a day, which is hard to get proper nutrition from without medical supervision. Choose a gentler pace, or talk to a professional.`,
+      });
     }
   } else {
     calories = tdee;
@@ -348,8 +413,14 @@ function calculate() {
     weeks = 0;
     warnings.push(
       targetKg > weightKg + 0.05
-        ? "Your target weight is above your current weight, so this shows maintenance numbers. For lean muscle gain, add a small surplus of 5–10% on top and keep protein high."
-        : "Your target equals your current weight, so this shows maintenance numbers."
+        ? {
+            academic: "Target weight exceeds current weight, so the figures shown reflect maintenance intake. For lean mass gain, a surplus of 5 to 10 percent above maintenance, combined with adequate protein intake, is generally recommended.",
+            conversational: "Your target is above your current weight, so these numbers are for maintaining, not losing. For lean muscle gain, add a small surplus of 5 to 10% on top and keep protein high.",
+          }
+        : {
+            academic: "Target weight equals current weight, so the figures shown reflect maintenance intake.",
+            conversational: "Your target is the same as your current weight, so these numbers are for maintaining.",
+          }
     );
   }
 
@@ -364,14 +435,16 @@ function calculate() {
   let fatG = fkg * proteinRefKg;
 
   if (losing && gkg < 1.6) {
-    warnings.push(
-      "Protein is set below 1.6 g/kg while in a deficit. Part of your weight loss will come from muscle instead of fat — slide protein up into the 1.6–2.2 g/kg range to protect it."
-    );
+    warnings.push({
+      academic: "Protein intake is set below 1.6 g/kg while in a caloric deficit. A portion of the resulting weight loss is likely to derive from skeletal muscle rather than fat mass. Increasing intake toward the 1.6–2.2 g/kg range is recommended.",
+      conversational: "Protein is set below 1.6 g/kg while you're in a deficit. Some of the weight you lose will likely come from muscle instead of fat. Slide protein up toward the 1.6–2.2 g/kg range to protect it.",
+    });
   }
   if (fkg < 0.6) {
-    warnings.push(
-      "Fat is set below 0.6 g/kg. Held there for long, hormone production and vitamin absorption suffer — slide fat up to at least 0.6–0.8 g/kg."
-    );
+    warnings.push({
+      academic: "Fat intake is set below 0.6 g/kg. Sustained at this level, hormone production and fat-soluble vitamin absorption may be impaired. Increasing intake to at least 0.6–0.8 g/kg is recommended.",
+      conversational: "Fat is set below 0.6 g/kg. Kept there for a while, hormone production and vitamin absorption tend to suffer. Slide fat up to at least 0.6–0.8 g/kg.",
+    });
   }
 
   // Keep the three macros inside the calorie budget: trim fat first (down to
@@ -381,17 +454,19 @@ function calculate() {
     if (proteinG * 4 + fatG * 9 > calories) {
       proteinG = Math.max(Math.min(gkg, 1.6) * proteinRefKg, (calories - fatG * 9) / 4);
     }
-    warnings.push(
-      "Your protein and fat settings add up to more than the calorie budget, so they've been trimmed to fit and carbs are at zero. Lower one of the sliders, or pick a gentler pace."
-    );
+    warnings.push({
+      academic: "Combined protein and fat settings exceed the available calorie budget; both have been reduced to fit, leaving no calories for carbohydrate. Lowering one of the sliders, or selecting a slower pace, is recommended.",
+      conversational: "Your protein and fat settings add up to more than your calorie budget, so we've trimmed them to fit, which leaves carbs at zero. Lower one of the sliders, or pick a gentler pace.",
+    });
   }
 
   const carbsG = Math.max(0, (calories - proteinG * 4 - fatG * 9) / 4);
 
   if (age < 18) {
-    warnings.push(
-      "You're under 18: growing bodies have different needs and this calculator isn't calibrated for you. Please involve a doctor or dietitian."
-    );
+    warnings.push({
+      academic: "This calculator is not calibrated for individuals under 18 years of age, whose nutritional requirements differ substantially due to ongoing growth and development. Consultation with a doctor or registered dietitian is recommended.",
+      conversational: "You're under 18: growing bodies have different needs, and this calculator isn't built for that. Please loop in a doctor or dietitian.",
+    });
   }
 
   return {
@@ -484,7 +559,10 @@ function render() {
     ? `<div class="tile">
          <div class="tile-label">Weekly loss</div>
          <div class="tile-value">${fmtWeight(r.weeklyLossKg)}</div>
-         <div class="tile-sub">≈ ${Math.ceil(r.weeks)} weeks — around ${eta}</div>
+         <div class="tile-sub">${reg({
+           academic: `approximately ${Math.ceil(r.weeks)} weeks, reaching target around ${eta}`,
+           conversational: `about ${Math.ceil(r.weeks)} weeks, around ${eta}`,
+         })}</div>
        </div>`
     : `<div class="tile">
          <div class="tile-label">Mode</div>
@@ -493,15 +571,22 @@ function render() {
        </div>`;
 
   const warnings = r.warnings
-    .map((w) => `<div class="notice"><span class="notice-icon" aria-hidden="true">⚠</span><p>${w}</p></div>`)
+    .map((w) => `<div class="notice"><span class="notice-icon" aria-hidden="true">⚠</span><p>${reg(w)}</p></div>`)
     .join("");
+
+  const proteinZ = proteinZone(r.proteinG / r.proteinRefKg);
+  const carbZ = carbZone(r.carbsG / r.weightKg);
+  const fatZ = fatZone(r.fatG / r.proteinRefKg);
 
   out.innerHTML = `
     <div class="card">
       <div class="hero-number">
         <div class="tile-label">${r.losing ? "Daily calorie target" : "Daily maintenance calories"}</div>
         <div class="hero-value"><span data-count="cal">${fmt(r.calories)}</span> <span class="hero-unit">kcal</span></div>
-        ${r.losing ? `<div class="tile-sub">a ${fmt(r.deficit)} kcal/day deficit below your ${fmt(r.tdee)} kcal maintenance</div>` : ""}
+        ${r.losing ? `<div class="tile-sub">${reg({
+          academic: `an estimated ${fmt(r.deficit)} kcal/day deficit relative to maintenance expenditure of ${fmt(r.tdee)} kcal`,
+          conversational: `a ${fmt(r.deficit)} kcal/day deficit below your ${fmt(r.tdee)} kcal maintenance`,
+        })}</div>` : ""}
       </div>
 
       <h2 class="section-title">Daily macros</h2>
@@ -509,27 +594,26 @@ function render() {
       <table class="macro-table">
         <thead><tr><th scope="col">Macro</th><th scope="col">Grams / day</th><th scope="col">kcal</th><th scope="col">Why</th></tr></thead>
         <tbody>
-          <tr><td>Protein</td><td>${fmt(r.proteinG)} g</td><td>${fmt(r.proteinG * 4)}</td><td>${(r.proteinG / r.proteinRefKg).toFixed(1)} g/kg — ${proteinZone(r.proteinG / r.proteinRefKg).label.toLowerCase()}</td></tr>
-          <tr><td>Carbs</td><td>${fmt(r.carbsG)} g</td><td>${fmt(r.carbsG * 4)}</td><td>${(r.carbsG / r.weightKg).toFixed(1)} g/kg — ${carbZone(r.carbsG / r.weightKg).label.toLowerCase()}</td></tr>
-          <tr><td>Fat</td><td>${fmt(r.fatG)} g</td><td>${fmt(r.fatG * 9)}</td><td>${(r.fatG / r.proteinRefKg).toFixed(2)} g/kg — ${fatZone(r.fatG / r.proteinRefKg).label.toLowerCase()}</td></tr>
+          <tr><td>Protein</td><td>${fmt(r.proteinG)} g</td><td>${fmt(r.proteinG * 4)}</td><td>${(r.proteinG / r.proteinRefKg).toFixed(1)} g/kg · ${reg(proteinZ.label).toLowerCase()}</td></tr>
+          <tr><td>Carbs</td><td>${fmt(r.carbsG)} g</td><td>${fmt(r.carbsG * 4)}</td><td>${(r.carbsG / r.weightKg).toFixed(1)} g/kg · ${reg(carbZ.label).toLowerCase()}</td></tr>
+          <tr><td>Fat</td><td>${fmt(r.fatG)} g</td><td>${fmt(r.fatG * 9)}</td><td>${(r.fatG / r.proteinRefKg).toFixed(2)} g/kg · ${reg(fatZ.label).toLowerCase()}</td></tr>
         </tbody>
       </table>
 
-      ${(() => {
-        const z = carbZone(r.carbsG / r.weightKg);
-        return `
       <div class="zone-feedback carb-note">
-        <span class="zone-chip zone-${z.tone}"><span aria-hidden="true">${z.icon}</span> Carbs: ${z.label.toLowerCase()}</span>
-        <p><strong>Carbs are the leftover dial</strong> — they fill the ${fmt(r.carbsG * 4)} kcal that remain after your protein and fat settings. ${z.text}</p>
-      </div>`;
-      })()}
+        <span class="zone-chip zone-${carbZ.tone}"><span aria-hidden="true">${carbZ.icon}</span> Carbs: ${reg(carbZ.label).toLowerCase()}</span>
+        <p>${reg({
+          academic: `<strong>Carbohydrate is calculated as the residual macronutrient:</strong> it fills the remaining ${fmt(r.carbsG * 4)} kcal once protein and fat allocations are set.`,
+          conversational: `<strong>Carbs are the leftover dial:</strong> they fill the ${fmt(r.carbsG * 4)} kcal left over after your protein and fat settings.`,
+        })} ${reg(carbZ.text)}</p>
+      </div>
 
       <h2 class="section-title">The numbers behind it</h2>
       <div class="tiles">
         <div class="tile">
           <div class="tile-label">Resting metabolism (BMR)</div>
           <div class="tile-value"><span data-count="bmr">${fmt(r.bmr)}</span> kcal</div>
-          <div class="tile-sub">Mifflin–St Jeor <sup class="cite"><a href="#ref-1">1</a></sup></div>
+          <div class="tile-sub">Mifflin-St Jeor <sup class="cite"><a href="#ref-1">1</a></sup></div>
         </div>
         <div class="tile">
           <div class="tile-label">Maintenance (TDEE)</div>
@@ -543,7 +627,10 @@ function render() {
 
       <div class="notice tip">
         <span class="notice-icon" aria-hidden="true">💪</span>
-        <p><strong>Keep the muscle:</strong> a calorie deficit only spares muscle if you give your body a reason to keep it<sup class="cite"><a href="#ref-9">9</a></sup>. Do resistance training 2–4× a week, hit the protein number daily (spread over 3–5 meals), and sleep 7–9 hours.</p>
+        <p>${reg({
+          academic: `<strong>Muscle preservation:</strong> a caloric deficit spares muscle only when resistance training provides a physiological stimulus to retain it<sup class="cite"><a href="#ref-9">9</a></sup>. Resistance train 2 to 4 times weekly, meet the daily protein target across 3 to 5 meals, and obtain 7 to 9 hours of sleep.`,
+          conversational: `<strong>Keep the muscle:</strong> a calorie deficit only spares muscle if you give your body a reason to keep it<sup class="cite"><a href="#ref-9">9</a></sup>. Do resistance training 2 to 4 times a week, hit your protein number daily (spread over 3 to 5 meals), and sleep 7 to 9 hours.`,
+        })}</p>
       </div>
     </div>`;
 
@@ -588,8 +675,21 @@ function loadState() {
   lastUnits = currentUnits();
 }
 
+function loadRegister() {
+  let value = "academic";
+  try { value = localStorage.getItem(REGISTER_KEY) || "academic"; } catch { /* private mode */ }
+  applyRegister(value);
+  const input = $(value === "conversational" ? "register-conversational" : "register-academic");
+  if (input) input.checked = true;
+}
+
+function saveRegister(value) {
+  try { localStorage.setItem(REGISTER_KEY, value); } catch { /* private mode */ }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   loadState();
+  loadRegister();
   syncUnitFields();
   syncProfileFields();
   renderProteinZone();
@@ -623,6 +723,16 @@ document.addEventListener("DOMContentLoaded", () => {
     el.addEventListener("pointercancel", () => hideSliderBubble(el, 600));
     el.addEventListener("focus", () => showSliderBubble(el));
     el.addEventListener("blur", () => hideSliderBubble(el, 0));
+  });
+
+  document.querySelectorAll('input[name="register"]').forEach((el) => {
+    el.addEventListener("change", (e) => {
+      applyRegister(e.target.value);
+      saveRegister(e.target.value);
+      renderProteinZone();
+      renderFatZone();
+      render();
+    });
   });
 
   // Reveal the science/references cards as they scroll into view.

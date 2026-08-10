@@ -2,29 +2,33 @@
 
 A free, no-build, single-page, **open-science** web tool that calculates your
 daily calories and macros to **lose fat at a healthy pace while preserving
-muscle** — with every formula and every threshold linked to the peer-reviewed
-research it's based on.
+muscle**, with every formula and every threshold linked to the peer-reviewed
+research it's based on. Explanations are available in two registers, academic
+and conversational, toggled from a switch at the top of the page.
 
 **[Open the calculator](https://peterslijkhuis.github.io/Macro-Calculator/)** (GitHub Pages)
 
 ## Features
 
-- **Metric & imperial** — kg/cm or lb/ft·in, with automatic value conversion when you switch
-- **Target weight** — get a weekly loss rate and an estimated finish date
-- **Inclusive hormonal profiles** — options for trans women, trans men, and
+- **Metric & imperial.** kg/cm or lb/ft·in, with automatic value conversion when you switch
+- **Target weight.** Get a weekly loss rate and an estimated finish date
+- **Inclusive hormonal profiles.** Options for trans women, trans men, and
   non-binary/intersex people, including a months-on-HRT input that gradually
   shifts the metabolism estimate toward the hormone-matched profile
-- **Live-feedback sliders for every macro** — protein (1.0–3.0 g/kg) and fat
+- **Academic and conversational explanations.** A toggle at the top of the
+  page switches every hint, warning, and results explanation between a formal
+  register and a plain-language one, without changing any of the numbers
+- **Live-feedback sliders for every macro.** Protein (1.0–3.0 g/kg) and fat
   (0.4–1.6 g/kg) each have a slider with a status chip, a large pop-up gram
-  readout while you drag, and plain-language explanation of what that level
-  means for muscle retention ("cannibalisation"), hormone health, satiety, and
-  the rest of the calorie budget. Carbs are the leftover dial — they fill the
-  remaining calories automatically and get their own live zone readout (keto
-  territory → low → moderate → high fuel)
-- **Muscle-sparing defaults** — protein 2.0 g/kg, fat 0.8 g/kg, deficit capped
+  readout while you drag, and an explanation of what that level means for
+  muscle retention, hormone health, satiety, and the rest of the calorie
+  budget. Carbs are the leftover dial: they fill the remaining calories
+  automatically and get their own live zone readout (keto territory, low,
+  moderate, or high fuel)
+- **Muscle-sparing defaults.** Protein 2.0 g/kg, fat 0.8 g/kg, deficit capped
   at 25% of maintenance
-- **Safety rails** — warnings for very low calories, very low carbs, and under-18 users
-- **In-app "How the maths works"** — a numbered, cited walkthrough of every
+- **Safety rails.** Warnings for very low calories, very low carbs, and under-18 users
+- **In-app "How the maths works".** A numbered, cited walkthrough of every
   formula, plus a full reference list with DOI links, right on the page
 - Animated results (numbers count up, the macro bar morphs, cards reveal on
   scroll) that back off automatically for `prefers-reduced-motion`
@@ -43,7 +47,7 @@ research it's based on.
 | Protein | User-chosen 1.0–3.0 g per kg body weight, default 2.0 (target weight is used as the reference when BMI ≥ 30, as a better proxy for lean mass); below 1.6 g/kg in a deficit the tool warns that weight loss will include muscle |
 | Fat | User-chosen 0.4–1.6 g/kg, default 0.8; below 0.6 g/kg the tool warns about hormone production and fat-soluble vitamin absorption |
 | Carbs | Whatever calories remain, with a live readout of what that level means for training fuel (thresholds at 0.75 / 2 / 4 g/kg) |
-| Budget clamp | If protein + fat exceed the calorie budget, fat is trimmed first (to a 0.5 g/kg floor), then protein — with a warning |
+| Budget clamp | If protein + fat exceed the calorie budget, fat is trimmed first (to a 0.5 g/kg floor), then protein, with a warning |
 
 The hormonal-profile handling reflects that metabolism formulas track
 hormone-driven body composition rather than gender identity: resting energy
@@ -51,8 +55,9 @@ expenditure measurably shifts within the first months of hormone therapy.
 The 6-month linear blend is a pragmatic approximation, not a clinical claim.
 
 The calculator itself shows this same table with full narrative context and
-citations under **"How the maths works"**, followed by a numbered reference
-list with DOI links — nothing above is asserted without a source.
+citations under **"How the maths works"**, in both explanation registers,
+followed by a numbered reference list with DOI links: nothing above is
+asserted without a source.
 
 ## References
 
@@ -74,7 +79,7 @@ list with DOI links — nothing above is asserted without a source.
 
 ## Running locally
 
-It's plain HTML/CSS/JS — no build step:
+It's plain HTML/CSS/JS, no build step:
 
 ```sh
 git clone https://github.com/PeterSlijkhuis/Macro-Calculator.git
@@ -86,16 +91,16 @@ python3 -m http.server 8000
 ## Hosting on GitHub Pages
 
 A workflow (`.github/workflows/pages.yml`) deploys automatically on every
-push via GitHub Actions — no build step, no branch juggling. The repo needs
-to be public (or on a paid plan) for Pages to be available.
+push via GitHub Actions, with no build step and no branch juggling. The repo
+needs to be public (or on a paid plan) for Pages to be available.
 
 ## Disclaimer
 
 This tool provides evidence-based *estimates* for healthy adults and is not
 medical advice. Talk to a doctor or registered dietitian before making big
-dietary changes — especially if you're under 18, pregnant, have a medical
+dietary changes, especially if you're under 18, pregnant, have a medical
 condition or eating-disorder history, or are on hormone therapy.
 
 ## License
 
-[MIT](LICENSE) — use it, fork it, audit it.
+[MIT](LICENSE). Use it, fork it, audit it.

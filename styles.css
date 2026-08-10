@@ -137,6 +137,21 @@ a.badge:hover, a.badge:focus-visible {
   color: var(--ink);
 }
 
+/* explanation register: academic vs conversational */
+.reg-conversational { display: none; }
+[data-register="conversational"] .reg-academic { display: none; }
+[data-register="conversational"] .reg-conversational { display: block; }
+
+.register-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+.register-label { font-size: 0.8rem; color: var(--muted); }
+.seg-register label { font-size: 0.85rem; padding: 0.35rem 0.85rem; }
+
 /* cards */
 .card {
   background: var(--surface);
