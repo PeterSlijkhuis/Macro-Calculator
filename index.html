@@ -125,33 +125,48 @@
       </div>
 
       <div class="field">
-        <label for="protein-gkg">Protein intake <span class="unit"><output id="protein-out" for="protein-gkg">2.0</output> g per kg of body weight</span> <span class="g-day" id="protein-gday"></span></label>
-        <p class="hint reg-academic">Protein intake is the primary determinant of lean mass retention during a caloric deficit. Adjust the slider to observe the effect of each level on muscle preservation, satiety, and the remaining calorie budget.</p>
-        <p class="hint reg-conversational">This is the main lever for keeping muscle while dieting. Move the slider to see what each level does to muscle, hunger, and the rest of your calorie budget.</p>
+        <label for="protein-g">Protein intake <span class="g-value"><output id="protein-out" for="protein-g">170</output> g / day</span> <span class="g-day" id="protein-gday"></span></label>
+        <p class="hint reg-academic">Protein intake is the primary determinant of lean mass retention during a caloric deficit. Adjust the slider to observe the effect of each level on muscle preservation, satiety, and total daily energy intake, shown below.</p>
+        <p class="hint reg-conversational">This is the main lever for keeping muscle while dieting. Move the slider to see what each level does to muscle, hunger, and your total calories for the day, shown below.</p>
         <div class="blend-row">
-          <span class="blend-end">1.0</span>
+          <span class="blend-end" id="protein-min">85</span>
           <div class="slider-wrap">
-            <input type="range" id="protein-gkg" class="g-slider" min="1" max="3" step="0.1" value="2" aria-describedby="protein-zone" />
+            <input type="range" id="protein-g" class="g-slider" min="85" max="255" step="1" value="170" aria-describedby="protein-zone" />
             <div class="slider-bubble" aria-hidden="true"></div>
           </div>
-          <span class="blend-end">3.0</span>
+          <span class="blend-end" id="protein-max">255</span>
         </div>
         <div id="protein-zone" class="zone-feedback" aria-live="polite"></div>
       </div>
 
       <div class="field">
-        <label for="fat-gkg">Fat intake <span class="unit"><output id="fat-out" for="fat-gkg">0.8</output> g per kg of body weight</span> <span class="g-day" id="fat-gday"></span></label>
-        <p class="hint reg-academic">Dietary fat is the precursor for endocrine hormone synthesis, and at 9 kcal per gram it is also the most energy-dense macronutrient. Carbohydrate intake has no independent control by design: it is calculated automatically as the residual after protein and fat are set, and shifts accordingly.</p>
-        <p class="hint reg-conversational">Fat is where your hormones come from, but at 9 kcal per gram it's also the priciest macro. Carbs don't get their own slider on purpose: they automatically fill whatever calories are left after protein and fat, so they move whenever you move these two.</p>
+        <label for="fat-g">Fat intake <span class="g-value"><output id="fat-out" for="fat-g">68</output> g / day</span> <span class="g-day" id="fat-gday"></span></label>
+        <p class="hint reg-academic">Dietary fat is the precursor for endocrine hormone synthesis, and at 9 kcal per gram it is also the most energy-dense macronutrient. Every gram added here directly raises total daily energy intake.</p>
+        <p class="hint reg-conversational">Fat is where your hormones come from, but at 9 kcal per gram it's also the priciest macro. Every gram you add here goes straight onto your daily total.</p>
         <div class="blend-row">
-          <span class="blend-end">0.4</span>
+          <span class="blend-end" id="fat-min">34</span>
           <div class="slider-wrap">
-            <input type="range" id="fat-gkg" class="g-slider" min="0.4" max="1.6" step="0.05" value="0.8" aria-describedby="fat-zone" />
+            <input type="range" id="fat-g" class="g-slider" min="34" max="136" step="1" value="68" aria-describedby="fat-zone" />
             <div class="slider-bubble" aria-hidden="true"></div>
           </div>
-          <span class="blend-end">1.6</span>
+          <span class="blend-end" id="fat-max">136</span>
         </div>
         <div id="fat-zone" class="zone-feedback" aria-live="polite"></div>
+      </div>
+
+      <div class="field">
+        <label for="carbs-g">Carb intake <span class="g-value"><output id="carbs-out" for="carbs-g">200</output> g / day</span> <span class="g-day" id="carbs-gday"></span></label>
+        <p class="hint reg-academic">Carbohydrate is the third independent lever. Total daily energy intake is calculated from all three sliders combined, shown live below, rather than fixed in advance. This makes it possible to observe the lowest total intake achievable while protein, fat, and carbohydrate each remain within their evidence-based optimal ranges.</p>
+        <p class="hint reg-conversational">Carbs get their own slider too. Your total calories for the day are calculated live from all three sliders together, shown below, instead of being fixed ahead of time. Try easing each one down toward its own sweet spot and watch how low you can take your daily total while every chip stays green.</p>
+        <div class="blend-row">
+          <span class="blend-end" id="carbs-min">0</span>
+          <div class="slider-wrap">
+            <input type="range" id="carbs-g" class="g-slider" min="0" max="510" step="1" value="200" aria-describedby="carbs-zone" />
+            <div class="slider-bubble" aria-hidden="true"></div>
+          </div>
+          <span class="blend-end" id="carbs-max">510</span>
+        </div>
+        <div id="carbs-zone" class="zone-feedback" aria-live="polite"></div>
       </div>
     </form>
 
@@ -192,8 +207,8 @@
           <h3 class="reg-academic">Energy deficit</h3>
           <h3 class="reg-conversational">The deficit: how big a gap to create</h3>
           <p class="formula">deficit = pace<sub>%BW/wk</sub> × weight × 7700 ÷ 7 <span class="formula-note">capped at 25% of TDEE</span></p>
-          <p class="reg-academic">Slower rates of weight loss are associated with better preservation of lean mass: elite athletes losing approximately 0.7 percent of body weight per week maintained, and in some cases gained, lean mass, while those losing approximately 1.4 percent per week experienced lean mass loss<sup class="cite"><a href="#ref-6">6</a></sup>. This underlies both the available pace options (0.5 to 1 percent per week) and the 25 percent deficit cap<sup class="cite"><a href="#ref-8">8</a></sup>. The figure of approximately 7,700 kcal per kilogram of fat tissue derives from Wishnofsky's classic analysis<sup class="cite"><a href="#ref-4">4</a></sup>. It functions as a useful planning constant, though the true energy cost per kilogram lost shifts as body composition changes over the course of a diet<sup class="cite"><a href="#ref-5">5</a></sup>; the projected timeline should be read as an estimate rather than a guarantee.</p>
-          <p class="reg-conversational">Slower cuts protect muscle better: athletes losing about 0.7% of body weight a week kept, and sometimes even gained, lean mass, while athletes losing about 1.4% a week lost it<sup class="cite"><a href="#ref-6">6</a></sup>. That's why we offer 0.5 to 1% pace options and cap the deficit at 25%<sup class="cite"><a href="#ref-8">8</a></sup>. The roughly 7,700 kcal per kg of fat figure comes from Wishnofsky's classic analysis<sup class="cite"><a href="#ref-4">4</a></sup>. It's a handy planning number, though the real energy cost per kilogram shifts as your body composition changes<sup class="cite"><a href="#ref-5">5</a></sup>, so treat the timeline as an estimate, not a promise.</p>
+          <p class="reg-academic">Slower rates of weight loss are associated with better preservation of lean mass: elite athletes losing approximately 0.7 percent of body weight per week maintained, and in some cases gained, lean mass, while those losing approximately 1.4 percent per week experienced lean mass loss<sup class="cite"><a href="#ref-6">6</a></sup>. This underlies both the available pace options (0.5 to 1 percent per week) and the 25 percent deficit cap<sup class="cite"><a href="#ref-8">8</a></sup>. The figure of approximately 7,700 kcal per kilogram of fat tissue derives from Wishnofsky's classic analysis<sup class="cite"><a href="#ref-4">4</a></sup>. It functions as a useful planning constant, though the true energy cost per kilogram lost shifts as body composition changes over the course of a diet<sup class="cite"><a href="#ref-5">5</a></sup>; the projected timeline should be read as an estimate rather than a guarantee. This deficit produces a <em>suggested</em> target only; actual daily intake is calculated live from the three macro sliders below, and the results screen compares the two directly.</p>
+          <p class="reg-conversational">Slower cuts protect muscle better: athletes losing about 0.7% of body weight a week kept, and sometimes even gained, lean mass, while athletes losing about 1.4% a week lost it<sup class="cite"><a href="#ref-6">6</a></sup>. That's why we offer 0.5 to 1% pace options and cap the deficit at 25%<sup class="cite"><a href="#ref-8">8</a></sup>. The roughly 7,700 kcal per kg of fat figure comes from Wishnofsky's classic analysis<sup class="cite"><a href="#ref-4">4</a></sup>. It's a handy planning number, though the real energy cost per kilogram shifts as your body composition changes<sup class="cite"><a href="#ref-5">5</a></sup>, so treat the timeline as an estimate, not a promise. This is only a <em>suggested</em> target, though; your actual daily total comes live from the three sliders below, and the results screen shows you both side by side.</p>
         </div>
       </div>
 
@@ -222,11 +237,11 @@
       <div class="sci-step">
         <div class="sci-num">6</div>
         <div class="sci-body">
-          <h3 class="reg-academic">Carbohydrate: the residual macronutrient</h3>
-          <h3 class="reg-conversational">Carbs: what's left over, on purpose</h3>
-          <p class="formula">carbs = (calories − protein×4 − fat×9) ÷ 4</p>
-          <p class="reg-academic">Energy balance functions as a closed budget: once protein and fat intake are set, carbohydrate intake is determined as the remainder. Presenting this as an explicit calculation is more transparent than treating all three macronutrients as independently adjustable. The carbohydrate zone thresholds reflect sports-nutrition guidance on carbohydrate requirements scaling with training load<sup class="cite"><a href="#ref-13">13</a></sup>.</p>
-          <p class="reg-conversational">Energy balance is a budget: once protein and fat are set, carbs are whatever's left. Making that explicit is more honest than pretending all three could be free to set independently. The carb zone labels follow sports-nutrition guidance on carb needs scaling with how much you train<sup class="cite"><a href="#ref-13">13</a></sup>.</p>
+          <h3 class="reg-academic">Carbohydrate: the third independent lever</h3>
+          <h3 class="reg-conversational">Carbs: the third lever</h3>
+          <p class="formula">calories = protein×4 + carbs×4 + fat×9 <span class="formula-note">derived, not fixed</span></p>
+          <p class="reg-academic">Protein, fat, and carbohydrate are each set independently, and total daily energy intake is the sum of the three, calculated live rather than fixed in advance. This makes the trade-off explicit: total calories can be lowered only by reducing one or more of the three macronutrients, and the results screen reports how far the current combination sits from the suggested pace-based target. The carbohydrate zone thresholds reflect sports-nutrition guidance on carbohydrate requirements scaling with training load<sup class="cite"><a href="#ref-13">13</a></sup>.</p>
+          <p class="reg-conversational">Protein, fat, and carbs are each their own dial now, and your total calories for the day are just the three of them added up, calculated live instead of fixed in advance. That makes the trade-off obvious: the only way to bring your total down is to bring one of the three sliders down, and the results screen tells you exactly how far you are from the suggested target. The carb zone labels follow sports-nutrition guidance on carb needs scaling with how much you train<sup class="cite"><a href="#ref-13">13</a></sup>.</p>
         </div>
       </div>
 

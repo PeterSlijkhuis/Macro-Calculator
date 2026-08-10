@@ -6,10 +6,13 @@ const KG_PER_LB = 0.45359237;
 const CM_PER_IN = 2.54;
 const KCAL_PER_KG_FAT = 7700; // energy in ~1 kg of body fat
 const HRT_SETTLE_MONTHS = 6;  // metabolic shift settles over ~first 6 months of HRT
-const MAX_DEFICIT_FRACTION = 0.25; // never cut more than 25% below maintenance
+const MAX_DEFICIT_FRACTION = 0.25; // beyond this, flag the deficit as risky
 const MIN_CALORIES = 1200;    // below this, flag as too low without supervision
 
-const FAT_FLOOR_G_PER_KG = 0.5; // absolute floor when the budget clamp kicks in
+// Slider bounds, expressed as a multiple of reference body weight (g/kg).
+const PROTEIN_GKG_MIN = 1.0, PROTEIN_GKG_MAX = 3.0;
+const FAT_GKG_MIN = 0.4, FAT_GKG_MAX = 1.6;
+const CARB_GKG_MAX = 6.0; // carbs slider always starts at 0
 
 const REGISTER_KEY = "macro-calc-register";
 
@@ -127,17 +130,7 @@ function profileBlend() {
   }
 }
 
-/* ---------- macro sliders & zones ---------- */
-
-function proteinGkg() {
-  const v = parseFloat($("protein-gkg").value);
-  return Number.isFinite(v) ? v : 2.0;
-}
-
-function fatGkg() {
-  const v = parseFloat($("fat-gkg").value);
-  return Number.isFinite(v) ? v : 0.8;
-}
+/* ---------- macro sliders: bounds, reading, zones ---------- */
 
 /**
  * Reference weight for protein/fat dosing. For higher body-fat levels the
@@ -150,6 +143,53 @@ function refWeightKg() {
   if (![weightKg, targetKg, heightCm].every(Number.isFinite) || heightCm < 100) return NaN;
   const bmi = weightKg / Math.pow(heightCm / 100, 2);
   return bmi >= 30 ? Math.min(weightKg, Math.max(targetKg, weightKg * 0.75)) : weightKg;
+}
+
+function proteinGramsInput() {
+  const v = parseFloat($("protein-g").value);
+  return Number.isFinite(v) ? v : 170;
+}
+
+function fatGramsInput() {
+  const v = parseFloat($("fat-g").value);
+  return Number.isFinite(v) ? v : 68;
+}
+
+function carbGramsInput() {
+  const v = parseFloat($("carbs-g").value);
+  return Number.isFinite(v) ? v : 0;
+}
+
+/**
+ * Recomputes each slider's min/max (in whole grams) from current bodyweight,
+ * updates the visible range-end labels, and clamps the slider's current
+ * value into the new bounds. Protein and fat scale off the reference
+ * weight; carbs scale off actual bodyweight, matching the carb zones.
+ */
+function updateSliderBounds() {
+  const ref = refWeightKg();
+  const weightKg = readWeightKg($("weight"));
+
+  const bounds = [];
+  if (Number.isFinite(ref)) {
+    bounds.push(
+      ["protein-g", "protein-min", "protein-max", Math.round(PROTEIN_GKG_MIN * ref), Math.round(PROTEIN_GKG_MAX * ref)],
+      ["fat-g", "fat-min", "fat-max", Math.round(FAT_GKG_MIN * ref), Math.round(FAT_GKG_MAX * ref)]
+    );
+  }
+  if (Number.isFinite(weightKg)) {
+    bounds.push(["carbs-g", "carbs-min", "carbs-max", 0, Math.round(CARB_GKG_MAX * weightKg)]);
+  }
+
+  for (const [inputId, minId, maxId, min, max] of bounds) {
+    const el = $(inputId);
+    el.min = min;
+    el.max = max;
+    $(minId).textContent = min;
+    $(maxId).textContent = max;
+    const v = parseFloat(el.value);
+    if (Number.isFinite(v)) el.value = Math.min(Math.max(v, min), max);
+  }
 }
 
 /**
@@ -191,8 +231,8 @@ function proteinZone(gkg) {
     tone: "neutral",
     icon: "🛡",
     text: {
-      academic: "Additional appetite control and a margin of safety, most useful when body fat is already low or the deficit is aggressive, the conditions under which muscle loss risk is highest<sup class=\"cite\"><a href=\"#ref-8\">8</a>,<a href=\"#ref-9\">9</a></sup>. The added muscle-retention benefit above 2.2 g/kg is marginal<sup class=\"cite\"><a href=\"#ref-7\">7</a></sup>, and each extra gram of protein displaces calories that would otherwise support carbohydrate intake.",
-      conversational: "A bit more appetite control and a safety margin, worth having if you're already lean or cutting hard, since that's when muscle is most at risk<sup class=\"cite\"><a href=\"#ref-8\">8</a>,<a href=\"#ref-9\">9</a></sup>. The muscle-protection benefit above 2.2 g/kg is marginal<sup class=\"cite\"><a href=\"#ref-7\">7</a></sup>, and every extra gram of protein takes calories away from the carbs that fuel your training.",
+      academic: "Additional appetite control and a margin of safety, most useful when body fat is already low or the deficit is aggressive, the conditions under which muscle loss risk is highest<sup class=\"cite\"><a href=\"#ref-8\">8</a>,<a href=\"#ref-9\">9</a></sup>. The added muscle-retention benefit above 2.2 g/kg is marginal<sup class=\"cite\"><a href=\"#ref-7\">7</a></sup>, and each extra gram of protein raises total daily calories without a proportional muscle-retention gain.",
+      conversational: "A bit more appetite control and a safety margin, worth having if you're already lean or cutting hard, since that's when muscle is most at risk<sup class=\"cite\"><a href=\"#ref-8\">8</a>,<a href=\"#ref-9\">9</a></sup>. The muscle-protection benefit above 2.2 g/kg is marginal<sup class=\"cite\"><a href=\"#ref-7\">7</a></sup>, and every extra gram adds to your daily total without much extra payoff.",
     },
   };
   return {
@@ -200,15 +240,15 @@ function proteinZone(gkg) {
     tone: "serious",
     icon: "⚠",
     text: {
-      academic: "No additional muscle-retention benefit accrues beyond this point; the effect has plateaued. Excess protein primarily displaces carbohydrate and fat from the budget, which can reduce training capacity and daily energy, though it poses no known risk to kidney function in healthy individuals.",
-      conversational: "No extra muscle protection up here, the benefit already plateaued. It mostly crowds carbs and fat out of your budget (harder workouts, lower energy) and becomes a chore to eat every day. Not harmful for healthy kidneys, just unnecessary.",
+      academic: "No additional muscle-retention benefit accrues beyond this point; the effect has plateaued. Excess protein simply raises total daily calories, which can work against a lower total intake, though it poses no known risk to kidney function in healthy individuals.",
+      conversational: "No extra muscle protection up here, the benefit already plateaued. It mostly just adds calories to your day without much payoff, and becomes a chore to eat every day. Not harmful for healthy kidneys, just unnecessary.",
     },
   };
 }
 
 /**
  * What a given fat intake (g per kg body weight) means for hormone health,
- * satiety, and how much of the calorie budget is left for carbs.
+ * satiety, and total daily calories.
  */
 function fatZone(gkg) {
   if (gkg < 0.6) return {
@@ -234,8 +274,8 @@ function fatZone(gkg) {
     tone: "good",
     icon: "✓",
     text: {
-      academic: "Sufficient to support hormone production and fat-soluble vitamin absorption. Fat also slows gastric emptying, extending satiety, while leaving adequate room in the calorie budget for the carbohydrate intake that supports training.",
-      conversational: "Enough fat to keep hormone production and vitamin absorption running smoothly. It also slows digestion, so meals keep you full for longer, and it still leaves plenty of room in the budget for the carbs that fuel your training.",
+      academic: "Sufficient to support hormone production and fat-soluble vitamin absorption. Fat also slows gastric emptying, extending satiety, at a moderate calorie cost given its 9 kcal per gram density.",
+      conversational: "Enough fat to keep hormone production and vitamin absorption running smoothly. It also slows digestion, so meals keep you full for longer, without dragging your daily total up too far.",
     },
   };
   if (gkg <= 1.35) return {
@@ -243,25 +283,25 @@ function fatZone(gkg) {
     tone: "neutral",
     icon: "🥑",
     text: {
-      academic: "A reasonable preference if fat-dense foods aid dietary adherence; hormonal needs are already met at this point. Each gram of fat costs 9 kcal, more than double protein or carbohydrate, so the remaining carbohydrate budget shrinks quickly beyond this level.",
-      conversational: "A fine choice if fatty foods are what keep you satisfied. Your hormones were already covered a while back. Just remember every gram of fat costs 9 kcal, more than double protein or carbs, so carb room shrinks fast up here.",
+      academic: "A reasonable preference if fat-dense foods aid dietary adherence; hormonal needs are already met at this point. Each gram of fat costs 9 kcal, more than double protein or carbohydrate, so total daily calories climb quickly beyond this level.",
+      conversational: "A fine choice if fatty foods are what keep you satisfied. Your hormones were already covered a while back. Just remember every gram of fat costs 9 kcal, more than double protein or carbs, so your daily total climbs fast up here.",
     },
   };
   return {
-    label: { academic: "Displacing carbohydrate", conversational: "Carb squeeze" },
+    label: { academic: "Displacing calorie budget", conversational: "Costly to keep low" },
     tone: "serious",
     icon: "⚠",
     text: {
-      academic: "Beyond any hormonal benefit. At this level, fat intake substantially displaces carbohydrate from the budget, which can reduce training capacity during intense sessions. Appropriate for a deliberate low-carbohydrate approach; otherwise, consider reducing intake.",
-      conversational: "Beyond any hormonal benefit. At this level, fat is mostly squeezing carbs out of the budget, which makes hard training sessions feel flat. Fine if you're deliberately going low-carb, otherwise slide it back down.",
+      academic: "Beyond any hormonal benefit. At 9 kcal per gram, fat intake at this level makes a meaningful contribution to total daily calories on its own. Appropriate for a deliberate higher-fat approach; otherwise, consider reducing intake to lower the daily total.",
+      conversational: "Beyond any hormonal benefit. At 9 kcal a gram, fat at this level is doing a lot of the work in your daily total on its own. Fine if you're deliberately going higher-fat, otherwise slide it back down to bring your total calories lower.",
     },
   };
 }
 
 /**
- * What the leftover carb allowance means. Carbs are protein-sparing fuel:
- * with glycogen available the body has less reason to burn amino acids.
- * Thresholds in g per kg body weight.
+ * What a given carb intake (g per kg body weight) means for training fuel
+ * and total daily calories. Carbs are also protein-sparing fuel: with
+ * glycogen available the body has less reason to burn amino acids.
  */
 function carbZone(gPerKg) {
   if (gPerKg < 0.75) return {
@@ -269,8 +309,8 @@ function carbZone(gPerKg) {
     tone: "serious",
     icon: "⚠",
     text: {
-      academic: "A markedly low carbohydrate intake. Sustainable if adopted deliberately; some individuals report improved appetite control at this level, but reduced training capacity should be expected during the initial adaptation period, particularly for high-intensity efforts. To increase carbohydrate room, reduce the protein or fat setting, or select a slower pace.",
-      conversational: "Very low carb. Totally doable if it's a deliberate choice (some people like it for appetite control), but expect flat, heavy workouts for the first few weeks, and less top-end in intense training. To free up carb room, nudge protein or fat down, or pick a gentler pace.",
+      academic: "A markedly low carbohydrate intake, and the easiest lever for reducing total daily calories toward their floor. Sustainable if adopted deliberately; some individuals report improved appetite control at this level, but reduced training capacity should be expected during the initial adaptation period, particularly for high-intensity efforts.",
+      conversational: "Very low carb, and the fastest way to bring your daily total down. Totally doable if it's a deliberate choice (some people like it for appetite control), but expect flat, heavy workouts for the first few weeks, and less top-end in intense training.",
     },
   };
   if (gPerKg < 2) return {
@@ -287,8 +327,8 @@ function carbZone(gPerKg) {
     tone: "good",
     icon: "✓",
     text: {
-      academic: "Adequate glycogen replenishment for regular training<sup class=\"cite\"><a href=\"#ref-13\">13</a></sup>. Carbohydrate is also protein-sparing: when glycogen is available, the body relies less on amino acid oxidation for energy, providing an additional layer of muscle protection.",
-      conversational: "Solid glycogen for regular training<sup class=\"cite\"><a href=\"#ref-13\">13</a></sup>. Carbs are also protein-sparing: with fuel on hand, your body has less reason to burn muscle for energy, one more layer of protection for the muscle you're working to keep.",
+      academic: "Adequate glycogen replenishment for regular training<sup class=\"cite\"><a href=\"#ref-13\">13</a></sup>. Carbohydrate is also protein-sparing: when glycogen is available, the body relies less on amino acid oxidation for energy, providing an additional layer of muscle protection. This is typically the lowest carbohydrate level within the well-supported range, making it the natural starting point when minimizing total calories.",
+      conversational: "Solid glycogen for regular training<sup class=\"cite\"><a href=\"#ref-13\">13</a></sup>. Carbs are also protein-sparing: with fuel on hand, your body has less reason to burn muscle for energy, one more layer of protection for the muscle you're working to keep. This is usually the low end of the comfortable zone, a good place to aim for if you're trying to bring your total calories down without leaving the sweet spot.",
     },
   };
   return {
@@ -296,27 +336,37 @@ function carbZone(gPerKg) {
     tone: "good",
     icon: "🚀",
     text: {
-      academic: "Ample glycogen availability, well suited to high training volumes or physically demanding occupations. If activity level is lower than this, reallocating part of this budget toward fat (for satiety) or a marginally faster pace may be more appropriate.",
-      conversational: "Plenty of glycogen, well suited to high training volumes or a physical job. If you're not that active, some of this budget might serve you better as fat (more filling) or a slightly brisker pace.",
+      academic: "Ample glycogen availability, well suited to high training volumes or physically demanding occupations. If activity level is lower than this, reducing carbohydrate toward the adequate-fuel range would lower total daily calories with little practical downside.",
+      conversational: "Plenty of glycogen, well suited to high training volumes or a physical job. If you're not that active, easing this down toward the moderate-fuel range would bring your daily total down without much of a downside.",
     },
   };
 }
 
-function renderZone(outId, zoneId, gdayId, gkg, zone, decimals) {
-  $(outId).value = gkg.toFixed(decimals);
-  const ref = refWeightKg();
-  $(gdayId).textContent = Number.isFinite(ref) ? `≈ ${Math.round(gkg * ref)} g/day` : "";
+function renderZone(outId, zoneId, gdayId, refKg, grams, zone, decimals) {
+  $(outId).value = Math.round(grams);
+  const gkg = Number.isFinite(refKg) && refKg > 0 ? grams / refKg : NaN;
+  $(gdayId).textContent = Number.isFinite(gkg) ? `(${gkg.toFixed(decimals)} g/kg)` : "";
   $(zoneId).innerHTML = `
     <span class="zone-chip zone-${zone.tone}"><span aria-hidden="true">${zone.icon}</span> ${reg(zone.label)}</span>
     <p>${reg(zone.text)}</p>`;
 }
 
 function renderProteinZone() {
-  renderZone("protein-out", "protein-zone", "protein-gday", proteinGkg(), proteinZone(proteinGkg()), 1);
+  const ref = refWeightKg();
+  const grams = proteinGramsInput();
+  renderZone("protein-out", "protein-zone", "protein-gday", ref, grams, proteinZone(grams / ref), 2);
 }
 
 function renderFatZone() {
-  renderZone("fat-out", "fat-zone", "fat-gday", fatGkg(), fatZone(fatGkg()), 2);
+  const ref = refWeightKg();
+  const grams = fatGramsInput();
+  renderZone("fat-out", "fat-zone", "fat-gday", ref, grams, fatZone(grams / ref), 2);
+}
+
+function renderCarbZone() {
+  const weightKg = readWeightKg($("weight"));
+  const grams = carbGramsInput();
+  renderZone("carbs-out", "carbs-zone", "carbs-gday", weightKg, grams, carbZone(grams / weightKg), 1);
 }
 
 /* ---------- slider value bubbles ---------- */
@@ -328,11 +378,11 @@ function updateSliderBubble(input) {
   if (!wrap) return;
   const bubble = wrap.querySelector(".slider-bubble");
   const v = parseFloat(input.value);
-  const decimals = input.id === "fat-gkg" ? 2 : 1;
-  const ref = refWeightKg();
-  bubble.innerHTML = Number.isFinite(ref)
-    ? `<strong>${Math.round(v * ref)} g</strong>${v.toFixed(decimals)} g/kg`
-    : `<strong>${v.toFixed(decimals)}</strong>g/kg`;
+  const ref = input.id === "carbs-g" ? readWeightKg($("weight")) : refWeightKg();
+  const gkg = Number.isFinite(ref) && ref > 0 ? v / ref : NaN;
+  bubble.innerHTML = Number.isFinite(gkg)
+    ? `<strong>${Math.round(v)} g</strong>${gkg.toFixed(2)} g/kg`
+    : `<strong>${Math.round(v)} g</strong>`;
   const min = parseFloat(input.min);
   const max = parseFloat(input.max);
   const frac = (v - min) / (max - min);
@@ -376,68 +426,71 @@ function calculate() {
   const tdee = bmr * activity;
 
   const warnings = [];
-  const losing = targetKg < weightKg - 0.05;
+  const wantsToLose = targetKg < weightKg - 0.05;
 
-  let calories, deficit, weeklyLossKg, weeks;
-
-  if (losing) {
-    weeklyLossKg = paceFraction * weightKg;
-    deficit = (weeklyLossKg * KCAL_PER_KG_FAT) / 7;
-
+  // Suggested target: the deficit implied by the chosen pace, capped at 25%
+  // of maintenance. This is a reference figure only; actual intake below
+  // comes independently from the three macro sliders.
+  let targetCalories, suggestedDeficit;
+  if (wantsToLose) {
+    const paceDeficit = (paceFraction * weightKg * KCAL_PER_KG_FAT) / 7;
     const maxDeficit = MAX_DEFICIT_FRACTION * tdee;
-    if (deficit > maxDeficit) {
-      const overshoot = deficit / maxDeficit;
-      deficit = maxDeficit;
-      weeklyLossKg = (deficit * 7) / KCAL_PER_KG_FAT;
-      if (overshoot > 1.05) {
-        warnings.push({
-          academic: "The selected pace would require a deficit exceeding 25 percent of maintenance calories, which increases the risk of muscle loss and metabolic rebound. Intake has been capped at 25 percent; a slower pace is recommended.",
-          conversational: "Your chosen pace would need a deficit bigger than 25% of maintenance, which risks losing muscle and rebounding later. We've capped it at 25%, so pick a gentler pace for a smoother ride.",
-        });
-      }
-    }
-
-    calories = tdee - deficit;
-    weeks = (weightKg - targetKg) / weeklyLossKg;
-
-    if (calories < MIN_CALORIES) {
+    suggestedDeficit = Math.min(paceDeficit, maxDeficit);
+    if (paceDeficit > maxDeficit * 1.05) {
       warnings.push({
-        academic: `Estimated intake falls below ${MIN_CALORIES} kcal/day, a level generally considered inadequate to meet nutrient needs without clinical supervision. Selecting a slower pace, or consulting a qualified professional, is recommended.`,
-        conversational: `This lands under ${MIN_CALORIES} kcal a day, which is hard to get proper nutrition from without medical supervision. Choose a gentler pace, or talk to a professional.`,
+        academic: "The pace selected would imply a deficit exceeding 25 percent of maintenance calories for the suggested target. The suggestion has been capped at 25 percent; a slower pace is recommended.",
+        conversational: "Your chosen pace would put the suggested target's deficit above 25% of maintenance. We've capped the suggestion at 25%, so pick a gentler pace if you want the target itself to move.",
       });
     }
+    targetCalories = tdee - suggestedDeficit;
   } else {
-    calories = tdee;
-    deficit = 0;
-    weeklyLossKg = 0;
-    weeks = 0;
+    suggestedDeficit = 0;
+    targetCalories = tdee;
     warnings.push(
       targetKg > weightKg + 0.05
         ? {
-            academic: "Target weight exceeds current weight, so the figures shown reflect maintenance intake. For lean mass gain, a surplus of 5 to 10 percent above maintenance, combined with adequate protein intake, is generally recommended.",
-            conversational: "Your target is above your current weight, so these numbers are for maintaining, not losing. For lean muscle gain, add a small surplus of 5 to 10% on top and keep protein high.",
+            academic: "Target weight exceeds current weight, so the suggested target reflects maintenance intake. For lean mass gain, a surplus of 5 to 10 percent above maintenance, combined with adequate protein intake, is generally recommended.",
+            conversational: "Your target is above your current weight, so the suggested number is for maintaining, not losing. For lean muscle gain, add a small surplus of 5 to 10% on top and keep protein high.",
           }
         : {
-            academic: "Target weight equals current weight, so the figures shown reflect maintenance intake.",
-            conversational: "Your target is the same as your current weight, so these numbers are for maintaining.",
+            academic: "Target weight equals current weight, so the suggested target reflects maintenance intake.",
+            conversational: "Your target is the same as your current weight, so the suggested number is for maintaining.",
           }
     );
   }
 
-  // Protein and fat come from the sliders (g per kg of reference weight);
-  // carbs fill whatever calories remain. For higher body-fat levels the
-  // target weight is a better proxy for lean mass than current weight.
-  const gkg = proteinGkg();
-  const fkg = fatGkg();
-  const bmi = weightKg / Math.pow(heightCm / 100, 2);
+  // Actual intake: protein, fat, and carbs are each set independently by
+  // their own slider (in whole grams), and total calories are derived as
+  // the sum, not fixed in advance. For higher body-fat levels the target
+  // weight is a better proxy for lean mass than current weight.
   const proteinRefKg = refWeightKg();
-  let proteinG = gkg * proteinRefKg;
-  let fatG = fkg * proteinRefKg;
+  const proteinG = proteinGramsInput();
+  const fatG = fatGramsInput();
+  const carbsG = carbGramsInput();
+  const actualCalories = proteinG * 4 + fatG * 9 + carbsG * 4;
+  const actualDeficit = tdee - actualCalories;
+  const actualWeeklyLossKg = (actualDeficit * 7) / KCAL_PER_KG_FAT;
 
-  if (losing && gkg < 1.6) {
+  const gkg = proteinG / proteinRefKg;
+  const fkg = fatG / proteinRefKg;
+  const ckg = carbsG / weightKg;
+
+  if (actualCalories < MIN_CALORIES) {
     warnings.push({
-      academic: "Protein intake is set below 1.6 g/kg while in a caloric deficit. A portion of the resulting weight loss is likely to derive from skeletal muscle rather than fat mass. Increasing intake toward the 1.6–2.2 g/kg range is recommended.",
-      conversational: "Protein is set below 1.6 g/kg while you're in a deficit. Some of the weight you lose will likely come from muscle instead of fat. Slide protein up toward the 1.6–2.2 g/kg range to protect it.",
+      academic: `Actual intake falls below ${MIN_CALORIES} kcal/day, a level generally considered inadequate to meet nutrient needs without clinical supervision. Increasing one or more macronutrient settings, or consulting a qualified professional, is recommended.`,
+      conversational: `Your sliders add up to under ${MIN_CALORIES} kcal a day, which is hard to get proper nutrition from without medical supervision. Bring one of the sliders up, or talk to a professional.`,
+    });
+  } else if (actualDeficit > MAX_DEFICIT_FRACTION * tdee) {
+    warnings.push({
+      academic: "The current macro settings create an energy deficit exceeding 25 percent of maintenance calories, which increases the risk of muscle loss and metabolic rebound. Increasing carbohydrate or fat intake is recommended.",
+      conversational: "Your sliders currently add up to more than 25% below maintenance, which risks losing muscle and rebounding later. Try adding back some carbs or fat.",
+    });
+  }
+
+  if (gkg < 1.6) {
+    warnings.push({
+      academic: "Protein intake is set below 1.6 g/kg. If total intake is also below maintenance, a portion of the resulting weight loss is likely to derive from skeletal muscle rather than fat mass. Increasing intake toward the 1.6–2.2 g/kg range is recommended.",
+      conversational: "Protein is set below 1.6 g/kg. If you're also in a deficit, some of the weight you lose will likely come from muscle instead of fat. Slide protein up toward the 1.6–2.2 g/kg range to protect it.",
     });
   }
   if (fkg < 0.6) {
@@ -447,21 +500,6 @@ function calculate() {
     });
   }
 
-  // Keep the three macros inside the calorie budget: trim fat first (down to
-  // an absolute floor), then protein.
-  if (proteinG * 4 + fatG * 9 > calories) {
-    fatG = Math.max(FAT_FLOOR_G_PER_KG * proteinRefKg, (calories - proteinG * 4) / 9);
-    if (proteinG * 4 + fatG * 9 > calories) {
-      proteinG = Math.max(Math.min(gkg, 1.6) * proteinRefKg, (calories - fatG * 9) / 4);
-    }
-    warnings.push({
-      academic: "Combined protein and fat settings exceed the available calorie budget; both have been reduced to fit, leaving no calories for carbohydrate. Lowering one of the sliders, or selecting a slower pace, is recommended.",
-      conversational: "Your protein and fat settings add up to more than your calorie budget, so we've trimmed them to fit, which leaves carbs at zero. Lower one of the sliders, or pick a gentler pace.",
-    });
-  }
-
-  const carbsG = Math.max(0, (calories - proteinG * 4 - fatG * 9) / 4);
-
   if (age < 18) {
     warnings.push({
       academic: "This calculator is not calibrated for individuals under 18 years of age, whose nutritional requirements differ substantially due to ongoing growth and development. Consultation with a doctor or registered dietitian is recommended.",
@@ -469,9 +507,22 @@ function calculate() {
     });
   }
 
+  const proteinTone = proteinZone(gkg).tone;
+  const fatTone = fatZone(fkg).tone;
+  const carbTone = carbZone(ckg).tone;
+  const allGood = proteinTone === "good" && fatTone === "good" && carbTone === "good";
+
+  // Timeline state, driven by the *actual* macro-derived deficit, not the
+  // nominal pace: dragging the sliders changes this live.
+  let timelineState = "flat";
+  if (actualWeeklyLossKg > 0.01 && weightKg > targetKg + 0.05) timelineState = "losing";
+  else if (actualWeeklyLossKg < -0.01) timelineState = "gaining";
+  const weeks = timelineState === "losing" ? (weightKg - targetKg) / actualWeeklyLossKg : 0;
+
   return {
-    bmr, tdee, calories, deficit, weeklyLossKg, weeks, losing, warnings,
-    proteinG, fatG, carbsG, proteinRefKg, weightKg, targetKg, bmi, blend: b, gkg, fkg,
+    bmr, tdee, targetCalories, actualCalories, actualDeficit, actualWeeklyLossKg,
+    timelineState, weeks, wantsToLose, warnings, allGood,
+    proteinG, fatG, carbsG, proteinRefKg, weightKg, targetKg, blend: b,
   };
 }
 
@@ -552,23 +603,55 @@ function render() {
     return;
   }
 
+  const delta = r.actualCalories - r.targetCalories;
+  const closeEnough = Math.abs(delta) < 15;
+  const compareLine = closeEnough
+    ? reg({
+        academic: `This closely matches the suggested target of ${fmt(r.targetCalories)} kcal.`,
+        conversational: `That's right at your ~${fmt(r.targetCalories)} kcal suggested target.`,
+      })
+    : delta < 0
+    ? reg({
+        academic: `This is ${fmt(-delta)} kcal below the suggested target of ${fmt(r.targetCalories)} kcal.`,
+        conversational: `That's ${fmt(-delta)} kcal below your ~${fmt(r.targetCalories)} kcal target.`,
+      })
+    : reg({
+        academic: `This is ${fmt(delta)} kcal above the suggested target of ${fmt(r.targetCalories)} kcal.`,
+        conversational: `That's ${fmt(delta)} kcal above your ~${fmt(r.targetCalories)} kcal target.`,
+      });
+
   const etaDate = new Date(Date.now() + r.weeks * 7 * 864e5);
   const eta = etaDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 
-  const timeline = r.losing
-    ? `<div class="tile">
+  let timeline;
+  if (r.timelineState === "losing") {
+    timeline = `<div class="tile">
          <div class="tile-label">Weekly loss</div>
-         <div class="tile-value">${fmtWeight(r.weeklyLossKg)}</div>
+         <div class="tile-value">${fmtWeight(r.actualWeeklyLossKg)}</div>
          <div class="tile-sub">${reg({
            academic: `approximately ${Math.ceil(r.weeks)} weeks, reaching target around ${eta}`,
            conversational: `about ${Math.ceil(r.weeks)} weeks, around ${eta}`,
          })}</div>
-       </div>`
-    : `<div class="tile">
+       </div>`;
+  } else if (r.timelineState === "gaining") {
+    timeline = `<div class="tile">
+         <div class="tile-label">Weekly change</div>
+         <div class="tile-value">+${fmtWeight(-r.actualWeeklyLossKg)}</div>
+         <div class="tile-sub">${reg({
+           academic: "current settings produce a caloric surplus",
+           conversational: "your sliders add up to a surplus right now",
+         })}</div>
+       </div>`;
+  } else {
+    timeline = `<div class="tile">
          <div class="tile-label">Mode</div>
          <div class="tile-value">Maintain</div>
-         <div class="tile-sub">no deficit applied</div>
+         <div class="tile-sub">${reg({
+           academic: "intake closely matches maintenance expenditure",
+           conversational: "your total is right around maintenance",
+         })}</div>
        </div>`;
+  }
 
   const warnings = r.warnings
     .map((w) => `<div class="notice"><span class="notice-icon" aria-hidden="true">⚠</span><p>${reg(w)}</p></div>`)
@@ -578,16 +661,25 @@ function render() {
   const carbZ = carbZone(r.carbsG / r.weightKg);
   const fatZ = fatZone(r.fatG / r.proteinRefKg);
 
+  const goodNotice = r.allGood
+    ? `<div class="notice success">
+        <span class="notice-icon" aria-hidden="true">🎯</span>
+        <p>${reg({
+          academic: `All three macronutrients fall within their evidence-based optimal ranges at a total daily intake of ${fmt(r.actualCalories)} kcal. This is approximately the lowest energy level achievable here without moving a macronutrient outside its recommended range.`,
+          conversational: `Every macro is in its sweet spot at just ${fmt(r.actualCalories)} kcal a day. That's about as low as you can go here without pushing one of them out of its safe range.`,
+        })}</p>
+      </div>`
+    : "";
+
   out.innerHTML = `
     <div class="card">
       <div class="hero-number">
-        <div class="tile-label">${r.losing ? "Daily calorie target" : "Daily maintenance calories"}</div>
-        <div class="hero-value"><span data-count="cal">${fmt(r.calories)}</span> <span class="hero-unit">kcal</span></div>
-        ${r.losing ? `<div class="tile-sub">${reg({
-          academic: `an estimated ${fmt(r.deficit)} kcal/day deficit relative to maintenance expenditure of ${fmt(r.tdee)} kcal`,
-          conversational: `a ${fmt(r.deficit)} kcal/day deficit below your ${fmt(r.tdee)} kcal maintenance`,
-        })}</div>` : ""}
+        <div class="tile-label">${reg({ academic: "Total daily intake", conversational: "Your daily total" })}</div>
+        <div class="hero-value"><span data-count="cal">${fmt(r.actualCalories)}</span> <span class="hero-unit">kcal</span></div>
+        <div class="tile-sub">${compareLine}</div>
       </div>
+
+      ${goodNotice}
 
       <h2 class="section-title">Daily macros</h2>
       ${macroBar(r)}
@@ -600,14 +692,6 @@ function render() {
         </tbody>
       </table>
 
-      <div class="zone-feedback carb-note">
-        <span class="zone-chip zone-${carbZ.tone}"><span aria-hidden="true">${carbZ.icon}</span> Carbs: ${reg(carbZ.label).toLowerCase()}</span>
-        <p>${reg({
-          academic: `<strong>Carbohydrate is calculated as the residual macronutrient:</strong> it fills the remaining ${fmt(r.carbsG * 4)} kcal once protein and fat allocations are set.`,
-          conversational: `<strong>Carbs are the leftover dial:</strong> they fill the ${fmt(r.carbsG * 4)} kcal left over after your protein and fat settings.`,
-        })} ${reg(carbZ.text)}</p>
-      </div>
-
       <h2 class="section-title">The numbers behind it</h2>
       <div class="tiles">
         <div class="tile">
@@ -619,6 +703,11 @@ function render() {
           <div class="tile-label">Maintenance (TDEE)</div>
           <div class="tile-value"><span data-count="tdee">${fmt(r.tdee)}</span> kcal</div>
           <div class="tile-sub">BMR × activity <sup class="cite"><a href="#ref-3">3</a></sup></div>
+        </div>
+        <div class="tile">
+          <div class="tile-label">Suggested target</div>
+          <div class="tile-value">${fmt(r.targetCalories)} kcal</div>
+          <div class="tile-sub">${reg({ academic: "from selected pace", conversational: "based on your pace" })}</div>
         </div>
         ${timeline}
       </div>
@@ -636,14 +725,14 @@ function render() {
 
   // Animate from the previous render's state instead of snapping.
   if (renderCache) {
-    animateCount(out.querySelector('[data-count="cal"]'), renderCache.calories, r.calories);
+    animateCount(out.querySelector('[data-count="cal"]'), renderCache.calories, r.actualCalories);
     animateCount(out.querySelector('[data-count="bmr"]'), renderCache.bmr, r.bmr);
     animateCount(out.querySelector('[data-count="tdee"]'), renderCache.tdee, r.tdee);
     animateBarFrom(renderCache.widths);
   }
   const widths = {};
   out.querySelectorAll(".macro-bar .seg-fill").forEach((seg) => { widths[seg.dataset.macro] = seg.style.width; });
-  renderCache = { calories: r.calories, bmr: r.bmr, tdee: r.tdee, widths };
+  renderCache = { calories: r.actualCalories, bmr: r.bmr, tdee: r.tdee, widths };
 }
 
 /* ---------- wiring ---------- */
@@ -687,13 +776,19 @@ function saveRegister(value) {
   try { localStorage.setItem(REGISTER_KEY, value); } catch { /* private mode */ }
 }
 
+function renderAllZones() {
+  renderProteinZone();
+  renderFatZone();
+  renderCarbZone();
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   loadState();
   loadRegister();
   syncUnitFields();
   syncProfileFields();
-  renderProteinZone();
-  renderFatZone();
+  updateSliderBounds();
+  renderAllZones();
   render();
 
   $("calc-form").addEventListener("input", (e) => {
@@ -702,12 +797,12 @@ document.addEventListener("DOMContentLoaded", () => {
       syncUnitFields();
     }
     if (e.target.id === "profile") syncProfileFields();
-    if (e.target.id === "protein-gkg") renderProteinZone();
-    if (e.target.id === "fat-gkg") renderFatZone();
-    // grams shown for the sliders depend on the weight fields too
+    // bounds and zones depend on weight/height/target and the sliders themselves
     if (["weight", "target-weight", "height-cm", "height-ft", "height-in"].includes(e.target.id) || e.target.name === "units") {
-      renderProteinZone();
-      renderFatZone();
+      updateSliderBounds();
+    }
+    if (e.target.classList.contains("g-slider") || ["weight", "target-weight", "height-cm", "height-ft", "height-in"].includes(e.target.id) || e.target.name === "units") {
+      renderAllZones();
     }
     if (e.target.classList.contains("g-slider")) {
       showSliderBubble(e.target);
@@ -729,8 +824,7 @@ document.addEventListener("DOMContentLoaded", () => {
     el.addEventListener("change", (e) => {
       applyRegister(e.target.value);
       saveRegister(e.target.value);
-      renderProteinZone();
-      renderFatZone();
+      renderAllZones();
       render();
     });
   });
