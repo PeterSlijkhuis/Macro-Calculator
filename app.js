@@ -700,10 +700,19 @@ function buildMealPlanHTML(r) {
   .toolbar button { font: inherit; padding: 0.55rem 1.1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; }
   .toolbar .hint { align-self: center; color: var(--muted); font-size: 0.82rem; }
   .foot { color: var(--muted); font-size: 0.82rem; margin-top: 2rem; border-top: 1px solid var(--hairline); padding-top: 1rem; }
+  @page { margin: 1.6cm; }
   @media print {
     .no-print { display: none !important; }
     body { background: #fff; }
-    .card { border-color: #ccc; }
+    .wrap { max-width: none; padding: 0; }
+    .card { border-color: #ccc; break-inside: avoid; page-break-inside: avoid; }
+    .facts, table, tr, .foot { break-inside: avoid; page-break-inside: avoid; }
+    /* CSS Grid doesn't paginate reliably; stack these so print can break cleanly between items */
+    .foods-grid, .ideas-grid { display: block; }
+    .foods-grid > div, .ideas-grid > div { break-inside: avoid; page-break-inside: avoid; margin-bottom: 1rem; }
+    h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
+    h2 { break-before: page; page-break-before: always; }
+    h2:first-of-type { break-before: avoid; page-break-before: avoid; }
   }
 </style>
 </head>
