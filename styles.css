@@ -137,20 +137,35 @@ a.badge:hover, a.badge:focus-visible {
   color: var(--ink);
 }
 
-/* explanation register: academic vs conversational */
-.reg-conversational { display: none; }
-[data-register="conversational"] .reg-academic { display: none; }
-[data-register="conversational"] .reg-conversational { display: block; }
-
+/* language + explanation register controls */
+.top-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.6rem 1.5rem;
+  margin-top: 1rem;
+}
 .register-row {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.6rem;
-  margin-top: 1rem;
 }
 .register-label { font-size: 0.8rem; color: var(--muted); }
 .seg-register label { font-size: 0.85rem; padding: 0.35rem 0.85rem; }
+
+.lang-select {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+.lang-select:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 /* cards */
 .card {
