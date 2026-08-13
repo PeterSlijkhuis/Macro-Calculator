@@ -382,6 +382,33 @@ input[type="number"]:focus-visible, select:focus-visible, input[type="range"]:fo
   margin-bottom: 1.25rem;
 }
 
+.export-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 1.25rem;
+  padding: 0.75rem 1rem;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+.export-btn:hover, .export-btn:focus-visible {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .export-btn { transition: none; }
+  .export-btn:hover { transform: none; }
+}
+
 /* citations */
 sup.cite { font-size: 0.7em; margin-left: 0.05em; }
 sup.cite a {

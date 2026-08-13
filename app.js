@@ -721,6 +721,10 @@ function render() {
           conversational: `<strong>Keep the muscle:</strong> a calorie deficit only spares muscle if you give your body a reason to keep it<sup class="cite"><a href="#ref-9">9</a></sup>. Do resistance training 2 to 4 times a week, hit your protein number daily (spread over 3 to 5 meals), and sleep 7 to 9 hours.`,
         })}</p>
       </div>
+
+      <button type="button" id="export-mealplan" class="export-btn">
+        <span aria-hidden="true">📋</span> ${reg({ academic: "Export meal plan", conversational: "Export my meal plan" })}
+      </button>
     </div>`;
 
   // Animate from the previous render's state instead of snapping.
@@ -733,6 +737,276 @@ function render() {
   const widths = {};
   out.querySelectorAll(".macro-bar .seg-fill").forEach((seg) => { widths[seg.dataset.macro] = seg.style.width; });
   renderCache = { calories: r.actualCalories, bmr: r.bmr, tdee: r.tdee, widths };
+}
+
+/* ---------- meal plan export ---------- */
+
+function fmtHeight() {
+  if (currentUnits() === "imperial") {
+    return `${$("height-ft").value || 0} ft ${$("height-in").value || 0} in`;
+  }
+  return `${$("height-cm").value} cm`;
+}
+
+function selectedLabel(id) {
+  const el = $(id);
+  return el.options[el.selectedIndex] ? el.options[el.selectedIndex].textContent : "";
+}
+
+// Curated whole-food sources per macro: [name, one-line reason]. Neutral,
+// register-independent factual bullets; the surrounding prose carries the
+// academic/conversational voice.
+const PROTEIN_FOODS = [
+  ["Chicken or turkey breast", "very lean, versatile, easy to portion"],
+  ["White fish (cod, tilapia, haddock)", "lean protein, low in calories"],
+  ["Salmon, mackerel, sardines", "protein plus omega-3 fat"],
+  ["Eggs and egg whites", "complete protein, cheap and quick"],
+  ["Greek yogurt and cottage cheese", "protein and calcium, low-fat options widely available"],
+  ["Tofu, tempeh, edamame", "plant-based, fiber included"],
+  ["Lentils, chickpeas, black beans", "protein plus fiber and micronutrients"],
+  ["Lean beef or pork tenderloin", "iron and B12 alongside protein"],
+  ["Whey or plant protein powder", "convenient way to close a gap in the target"],
+];
+const CARB_FOODS = [
+  ["Oats", "fiber-rich, slow-digesting, versatile"],
+  ["Brown rice, quinoa, farro", "whole grains with fiber and minerals"],
+  ["Sweet potatoes and potatoes", "filling, rich in potassium"],
+  ["Whole grain bread and pasta", "more fiber than refined versions"],
+  ["Berries, bananas, apples, oranges", "fiber, vitamins, and antioxidants"],
+  ["Broccoli, spinach, peppers, carrots", "very low calorie density, high in micronutrients"],
+  ["Beans, lentils, chickpeas", "carbs, protein, and fiber in one food"],
+  ["Whole grain cereal or crackers", "an easy way to round out a meal"],
+];
+const FAT_FOODS = [
+  ["Extra virgin olive oil", "monounsaturated fat for cooking and dressing"],
+  ["Avocado", "monounsaturated fat, fiber, and potassium"],
+  ["Almonds, walnuts, cashews, pistachios", "healthy fat plus protein and fiber"],
+  ["Chia, flax, hemp, and pumpkin seeds", "omega-3s and fiber"],
+  ["Fatty fish (salmon, mackerel, sardines)", "omega-3 fat, also a protein source"],
+  ["Natural peanut or almond butter", "calorie-dense and convenient"],
+  ["Whole eggs", "fat and protein together"],
+];
+
+const MEAL_IDEAS = {
+  Breakfast: [
+    "Greek yogurt with mixed berries, a handful of almonds, and a drizzle of honey",
+    "Oats cooked in milk, topped with banana slices and a spoon of peanut butter",
+    "Veggie omelet (whole eggs plus egg whites) with spinach and peppers, side of whole grain toast",
+    "Cottage cheese with pineapple and a sprinkle of chia seeds",
+  ],
+  Lunch: [
+    "Grilled chicken breast, quinoa, roasted vegetables, drizzle of olive oil",
+    "Tuna or salmon over mixed greens with chickpeas and avocado",
+    "Turkey and hummus wrap on a whole grain wrap with vegetables",
+    "Lentil soup with a side of whole grain bread",
+  ],
+  Dinner: [
+    "Baked salmon, sweet potato, and steamed broccoli",
+    "Lean beef or tofu stir-fry with brown rice and mixed vegetables",
+    "Grilled white fish tacos on corn tortillas with black beans and salsa",
+    "Chicken and vegetable curry with basmati rice, light on the coconut milk",
+  ],
+  Snacks: [
+    "A piece of fruit with a small handful of nuts",
+    "A cup of Greek yogurt",
+    "Two hard-boiled eggs",
+    "A protein shake with a banana",
+    "Hummus with carrot and cucumber sticks",
+  ],
+};
+
+function foodListHTML(items) {
+  return items.map(([name, reason]) => `<li><strong>${name}</strong>, ${reason}</li>`).join("");
+}
+
+function mealIdeaListHTML(items) {
+  return items.map((idea) => `<li>${idea}</li>`).join("");
+}
+
+function buildMealPlanHTML(r) {
+  const genDate = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const pKcal = r.proteinG * 4, cKcal = r.carbsG * 4, fKcal = r.fatG * 9;
+  const totalKcal = pKcal + cKcal + fKcal || 1;
+  const pct = (x) => Math.max((x / totalKcal) * 100, 0);
+  const proteinZ = proteinZone(r.proteinG / r.proteinRefKg);
+  const fatZ = fatZone(r.fatG / r.proteinRefKg);
+  const carbZ = carbZone(r.carbsG / r.weightKg);
+
+  const timelineText =
+    r.timelineState === "losing"
+      ? `${reg({ academic: "Projected loss", conversational: "Projected weekly loss" })}: ${fmtWeight(r.actualWeeklyLossKg)} / week, about ${Math.ceil(r.weeks)} weeks to target`
+      : r.timelineState === "gaining"
+      ? `${reg({ academic: "Projected surplus", conversational: "Projected weekly gain" })}: +${fmtWeight(-r.actualWeeklyLossKg)} / week`
+      : reg({ academic: "Intake closely matches maintenance expenditure", conversational: "Roughly maintaining at this intake" });
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Meal Plan, ${genDate}</title>
+<style>
+  :root {
+    --page: #f9f9f7; --surface: #ffffff; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --hairline: #e1e0d9; --border: rgba(11,11,11,0.10); --accent: #2a78d6;
+    --protein: #2a78d6; --carbs: #eb6834; --fat: #1baf7a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.55; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 2rem 1.25rem 3rem; }
+  h1 { font-size: 1.9rem; margin: 0 0 0.2rem; letter-spacing: -0.01em; }
+  .subtitle { color: var(--ink-2); margin: 0 0 1.5rem; }
+  h2 { font-size: 1.15rem; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 2px solid var(--hairline); }
+  h3 { font-size: 1rem; margin: 1.25rem 0 0.5rem; }
+  .section-note { color: var(--ink-2); font-size: 0.92rem; margin: 0 0 0.9rem; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.1rem 1.3rem; margin-bottom: 1rem; }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.7rem 1.2rem; font-size: 0.92rem; }
+  .facts dt { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; margin: 0; }
+  .facts dd { margin: 0.1rem 0 0; font-weight: 600; }
+  .hero-cals { text-align: center; margin: 1.2rem 0; }
+  .hero-cals .big { font-size: 2.6rem; font-weight: 700; letter-spacing: -0.02em; }
+  .hero-cals .unit { font-size: 1.1rem; color: var(--ink-2); font-weight: 500; }
+  .hero-cals .sub { color: var(--ink-2); font-size: 0.9rem; margin-top: 0.2rem; }
+  .macro-bar { display: flex; gap: 2px; height: 22px; border-radius: 6px; overflow: hidden; margin: 1rem 0 0.6rem; }
+  .macro-bar span { display: block; }
+  .protein-fill { background: var(--protein); }
+  .carbs-fill { background: var(--carbs); }
+  .fat-fill { background: var(--fat); }
+  .legend { display: flex; gap: 1.5rem; flex-wrap: wrap; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  .legend span.dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 0.35rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 0.5rem; }
+  th, td { text-align: left; padding: 0.45rem 0.5rem; border-bottom: 1px solid var(--hairline); }
+  th { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .chip { display: inline-block; padding: 0.1rem 0.55rem; border-radius: 999px; font-size: 0.78rem; font-weight: 600; border: 1px solid var(--border); }
+  .chip-good { background: rgba(12,163,12,0.12); border-color: #0ca30c; }
+  .chip-neutral { background: rgba(42,120,214,0.12); border-color: var(--accent); }
+  .chip-serious { background: rgba(236,131,90,0.16); border-color: #ec835a; }
+  .chip-critical { background: rgba(208,59,59,0.14); border-color: #d03b3b; }
+  .foods-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; }
+  .foods-grid h3 { margin-top: 0; }
+  .foods-grid ul, .ideas ul { margin: 0; padding-left: 1.1rem; font-size: 0.88rem; color: var(--ink-2); }
+  .foods-grid li, .ideas li { margin-bottom: 0.5rem; }
+  .foods-grid li strong, .ideas li strong { color: var(--ink); }
+  .ideas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+  .toolbar { display: flex; gap: 0.6rem; margin-bottom: 1.5rem; }
+  .toolbar button { font: inherit; padding: 0.55rem 1.1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; }
+  .toolbar .hint { align-self: center; color: var(--muted); font-size: 0.82rem; }
+  .foot { color: var(--muted); font-size: 0.82rem; margin-top: 2rem; border-top: 1px solid var(--hairline); padding-top: 1rem; }
+  @media print {
+    .no-print { display: none !important; }
+    body { background: #fff; }
+    .card { border-color: #ccc; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="toolbar no-print">
+      <button type="button" onclick="window.print()">🖨️ Print / Save as PDF</button>
+      <span class="hint">Use your browser's print dialog and choose "Save as PDF" to keep a copy.</span>
+    </div>
+
+    <h1>Your Meal Plan</h1>
+    <p class="subtitle">Generated ${genDate} from your Macro Calculator settings.</p>
+
+    <h2>Overview</h2>
+    <p class="section-note">${reg({
+      academic: "The following figures reflect the settings entered in the calculator at the time of export.",
+      conversational: "Here's a snapshot of your numbers, exactly as you had them set when you exported this.",
+    })}</p>
+
+    <div class="card">
+      <dl class="facts">
+        <div><dt>Age</dt><dd>${$("age").value} years</dd></div>
+        <div><dt>Height</dt><dd>${fmtHeight()}</dd></div>
+        <div><dt>Current weight</dt><dd>${fmtWeight(r.weightKg)}</dd></div>
+        <div><dt>Target weight</dt><dd>${fmtWeight(r.targetKg)}</dd></div>
+        <div><dt>Hormonal profile</dt><dd>${selectedLabel("profile")}</dd></div>
+        <div><dt>Activity level</dt><dd>${selectedLabel("activity")}</dd></div>
+        <div><dt>Weight-loss pace</dt><dd>${selectedLabel("pace")}</dd></div>
+        <div><dt>Explanation style</dt><dd>${currentRegister() === "conversational" ? "Conversational" : "Academic"}</dd></div>
+      </dl>
+
+      <div class="hero-cals">
+        <div class="big">${fmt(r.actualCalories)}</div>
+        <span class="unit">kcal / day</span>
+        <div class="sub">Suggested target: ${fmt(r.targetCalories)} kcal &middot; ${timelineText}</div>
+      </div>
+
+      <div class="macro-bar">
+        <span class="protein-fill" style="width:${pct(pKcal).toFixed(1)}%"></span>
+        <span class="carbs-fill" style="width:${pct(cKcal).toFixed(1)}%"></span>
+        <span class="fat-fill" style="width:${pct(fKcal).toFixed(1)}%"></span>
+      </div>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--protein)"></span>Protein ${fmt(r.proteinG)} g &middot; ${Math.round(pct(pKcal))}%</span>
+        <span><span class="dot" style="background:var(--carbs)"></span>Carbs ${fmt(r.carbsG)} g &middot; ${Math.round(pct(cKcal))}%</span>
+        <span><span class="dot" style="background:var(--fat)"></span>Fat ${fmt(r.fatG)} g &middot; ${Math.round(pct(fKcal))}%</span>
+      </div>
+
+      <table>
+        <thead><tr><th>Macro</th><th>Grams / day</th><th>kcal</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Protein</td><td>${fmt(r.proteinG)} g</td><td>${fmt(pKcal)}</td><td><span class="chip chip-${proteinZ.tone}">${reg(proteinZ.label)}</span></td></tr>
+          <tr><td>Carbs</td><td>${fmt(r.carbsG)} g</td><td>${fmt(cKcal)}</td><td><span class="chip chip-${carbZ.tone}">${reg(carbZ.label)}</span></td></tr>
+          <tr><td>Fat</td><td>${fmt(r.fatG)} g</td><td>${fmt(fKcal)}</td><td><span class="chip chip-${fatZ.tone}">${reg(fatZ.label)}</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Great foods for each macro</h2>
+    <p class="section-note">${reg({
+      academic: "The following food sources were selected for favorable nutrient density and dietary quality within each macronutrient category.",
+      conversational: "Here are some solid go-to foods for each macro, picked for being filling, nutritious, and easy to build meals around.",
+    })}</p>
+    <div class="card foods-grid">
+      <div>
+        <h3 style="color:var(--protein)">Protein</h3>
+        <ul>${foodListHTML(PROTEIN_FOODS)}</ul>
+      </div>
+      <div>
+        <h3 style="color:var(--carbs)">Carbs</h3>
+        <ul>${foodListHTML(CARB_FOODS)}</ul>
+      </div>
+      <div>
+        <h3 style="color:var(--fat)">Fat</h3>
+        <ul>${foodListHTML(FAT_FOODS)}</ul>
+      </div>
+    </div>
+
+    <h2>Meal ideas</h2>
+    <p class="section-note">${reg({
+      academic: "The following meal combinations are illustrative examples only, intended to demonstrate practical application of the macronutrient targets above; they are not portioned to exact gram values.",
+      conversational: "These are just ideas to get you started, not an exact meal plan. Mix and match, and use the gram targets above as your guide.",
+    })}</p>
+    <div class="card ideas">
+      <div class="ideas-grid">
+        <div><h3>Breakfast</h3><ul>${mealIdeaListHTML(MEAL_IDEAS.Breakfast)}</ul></div>
+        <div><h3>Lunch</h3><ul>${mealIdeaListHTML(MEAL_IDEAS.Lunch)}</ul></div>
+        <div><h3>Dinner</h3><ul>${mealIdeaListHTML(MEAL_IDEAS.Dinner)}</ul></div>
+        <div><h3>Snacks</h3><ul>${mealIdeaListHTML(MEAL_IDEAS.Snacks)}</ul></div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <p>${reg({
+        academic: "This export is not medical advice. It reflects evidence-based estimates for healthy adults; individual requirements vary. Consult a physician or registered dietitian before substantial dietary changes.",
+        conversational: "Not medical advice. This is an evidence-based estimate for healthy adults, and everyone's different, so check with a doctor or registered dietitian before making big changes.",
+      })}</p>
+      <p>Generated by <a href="https://peterslijkhuis.github.io/Macro-Calculator/">Macro Calculator</a>. Settings can change at any time, re-export whenever you update them.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+function exportMealPlan() {
+  const r = calculate();
+  if (!r) return;
+  const html = buildMealPlanHTML(r);
+  const blob = new Blob([html], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank");
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
 /* ---------- wiring ---------- */
@@ -790,6 +1064,10 @@ document.addEventListener("DOMContentLoaded", () => {
   updateSliderBounds();
   renderAllZones();
   render();
+
+  $("results").addEventListener("click", (e) => {
+    if (e.target.closest("#export-mealplan")) exportMealPlan();
+  });
 
   $("calc-form").addEventListener("input", (e) => {
     if (e.target.name === "units") {

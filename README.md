@@ -32,6 +32,11 @@ and conversational, toggled from a switch at the top of the page.
   loss/gain that reacts to the sliders in real time
 - **Muscle-sparing defaults.** Protein 2.0 g/kg, fat 0.8 g/kg, deficit capped
   at 25% of maintenance
+- **Meal plan export.** One click generates a self-contained, printable page
+  (no PDF library, no server) with a formatted overview of your current
+  settings and macros, a curated list of healthy whole-food sources for each
+  macro, and example breakfast/lunch/dinner/snack combinations. Opens in a
+  new tab; use your browser's print dialog to save it as a PDF
 - **Safety rails.** Warnings for very low calories, very low carbs, and under-18 users
 - **In-app "How the maths works".** A numbered, cited walkthrough of every
   formula, plus a full reference list with DOI links, right on the page
