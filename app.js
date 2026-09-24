@@ -24,15 +24,43 @@ function currentRegister() {
   return document.documentElement.dataset.register === "conversational" ? "conversational" : "academic";
 }
 
-// Pick the string for the active register from a {academic, conversational} pair.
-// Plain strings (no register split) pass through unchanged.
-function reg(pair) {
-  if (typeof pair === "string") return pair;
-  return pair[currentRegister()];
-}
-
 function applyRegister(value) {
   document.documentElement.dataset.register = value === "conversational" ? "conversational" : "academic";
+}
+
+/* ---------- translation (language + register) ---------- */
+
+function translatePage() {
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.querySelectorAll("[data-i18n-html]").forEach((el) => {
+    el.innerHTML = t(el.dataset.i18nHtml);
+  });
+  document.querySelectorAll("[data-i18n-aria]").forEach((el) => {
+    el.setAttribute("aria-label", t(el.dataset.i18nAria));
+  });
+  document.title = t("page_title");
+  const metaDesc = document.querySelector('meta[name="description"]');
+  if (metaDesc) metaDesc.setAttribute("content", t("meta_description"));
+}
+
+function populateLangSelect() {
+  const select = $("lang-select");
+  if (!select || select.options.length) return;
+  select.innerHTML = LANGUAGES.map((l) => `<option value="${l.code}">${l.label}</option>`).join("");
+}
+
+function loadLang() {
+  let code = "en";
+  try { code = localStorage.getItem(LANG_KEY) || "en"; } catch { /* private mode */ }
+  applyLang(code);
+  const select = $("lang-select");
+  if (select) select.value = currentLang();
+}
+
+function saveLang(code) {
+  try { localStorage.setItem(LANG_KEY, code); } catch { /* private mode */ }
 }
 
 /* ---------- unit handling ---------- */
@@ -195,55 +223,15 @@ function updateSliderBounds() {
 /**
  * What a given protein intake (g per kg body weight) means in a calorie
  * deficit: muscle retention, satiety, and the rest of the budget. Every
- * zone carries an academic and a conversational explanation of the same
- * evidence.
+ * zone carries an i18n key resolved into label/text for the current
+ * language and register.
  */
 function proteinZone(gkg) {
-  if (gkg < 1.4) return {
-    label: { academic: "Catabolic risk", conversational: "Muscle at risk" },
-    tone: "critical",
-    icon: "⛔",
-    text: {
-      academic: "At this intake, protein availability is generally insufficient to offset a caloric deficit without loss of skeletal muscle protein<sup class=\"cite\"><a href=\"#ref-7\">7</a></sup>. Protein is also the most satiating macronutrient<sup class=\"cite\"><a href=\"#ref-10\">10</a></sup>; at low intakes, hunger and cravings tend to increase.",
-      conversational: "At this level, your body doesn't get enough protein to cover the shortfall, so it starts breaking down muscle along with fat<sup class=\"cite\"><a href=\"#ref-7\">7</a></sup>. It's also the least filling setting: protein keeps you full longer<sup class=\"cite\"><a href=\"#ref-10\">10</a></sup>, so hunger and cravings tend to win more often here.",
-    },
-  };
-  if (gkg < 1.6) return {
-    label: { academic: "Suboptimal", conversational: "Bare minimum" },
-    tone: "serious",
-    icon: "⚠",
-    text: {
-      academic: "This intake slows the rate of muscle loss relative to lower levels but remains below the range studied in dieting individuals who train. Some reduction in lean mass alongside fat mass should be expected, along with lower satiety than in the optimal range.",
-      conversational: "This slows muscle loss, but it's still below what's usually studied for people dieting while training. Expect to lose a little muscle along with the fat, and to feel hungrier between meals than in the sweet spot.",
-    },
-  };
-  if (gkg <= 2.2) return {
-    label: { academic: "Optimal range", conversational: "Sweet spot" },
-    tone: "good",
-    icon: "✓",
-    text: {
-      academic: "This range (1.6–2.2 g/kg) is associated with near-complete preservation of muscle mass during a deficit, provided resistance training continues<sup class=\"cite\"><a href=\"#ref-7\">7</a>,<a href=\"#ref-8\">8</a>,<a href=\"#ref-9\">9</a></sup>. Protein also has the highest satiety value<sup class=\"cite\"><a href=\"#ref-10\">10</a></sup> and thermic effect of the three macronutrients, with 20 to 30 percent of its calories spent on digestion<sup class=\"cite\"><a href=\"#ref-11\">11</a></sup>, which supports appetite control.",
-      conversational: "This range (1.6–2.2 g/kg) is the sweet spot for keeping virtually all your muscle in a deficit, as long as you keep lifting<sup class=\"cite\"><a href=\"#ref-7\">7</a>,<a href=\"#ref-8\">8</a>,<a href=\"#ref-9\">9</a></sup>. Bonus: protein is the most filling macro<sup class=\"cite\"><a href=\"#ref-10\">10</a></sup> and burns the most calories just to digest, about 20 to 30% of its own energy<sup class=\"cite\"><a href=\"#ref-11\">11</a></sup>, so hunger is easiest to manage here.",
-    },
-  };
-  if (gkg <= 2.6) return {
-    label: { academic: "Added margin", conversational: "Extra insurance" },
-    tone: "neutral",
-    icon: "🛡",
-    text: {
-      academic: "Additional appetite control and a margin of safety, most useful when body fat is already low or the deficit is aggressive, the conditions under which muscle loss risk is highest<sup class=\"cite\"><a href=\"#ref-8\">8</a>,<a href=\"#ref-9\">9</a></sup>. The added muscle-retention benefit above 2.2 g/kg is marginal<sup class=\"cite\"><a href=\"#ref-7\">7</a></sup>, and each extra gram of protein raises total daily calories without a proportional muscle-retention gain.",
-      conversational: "A bit more appetite control and a safety margin, worth having if you're already lean or cutting hard, since that's when muscle is most at risk<sup class=\"cite\"><a href=\"#ref-8\">8</a>,<a href=\"#ref-9\">9</a></sup>. The muscle-protection benefit above 2.2 g/kg is marginal<sup class=\"cite\"><a href=\"#ref-7\">7</a></sup>, and every extra gram adds to your daily total without much extra payoff.",
-    },
-  };
-  return {
-    label: { academic: "Above requirement", conversational: "More than needed" },
-    tone: "serious",
-    icon: "⚠",
-    text: {
-      academic: "No additional muscle-retention benefit accrues beyond this point; the effect has plateaued. Excess protein simply raises total daily calories, which can work against a lower total intake, though it poses no known risk to kidney function in healthy individuals.",
-      conversational: "No extra muscle protection up here, the benefit already plateaued. It mostly just adds calories to your day without much payoff, and becomes a chore to eat every day. Not harmful for healthy kidneys, just unnecessary.",
-    },
-  };
+  if (gkg < 1.4) return { key: "pz_risk", tone: "critical", icon: "⛔" };
+  if (gkg < 1.6) return { key: "pz_bare", tone: "serious", icon: "⚠" };
+  if (gkg <= 2.2) return { key: "pz_sweet", tone: "good", icon: "✓" };
+  if (gkg <= 2.6) return { key: "pz_extra", tone: "neutral", icon: "🛡" };
+  return { key: "pz_above", tone: "serious", icon: "⚠" };
 }
 
 /**
@@ -251,51 +239,11 @@ function proteinZone(gkg) {
  * satiety, and total daily calories.
  */
 function fatZone(gkg) {
-  if (gkg < 0.6) return {
-    label: { academic: "Hormonal risk", conversational: "Hormones at risk" },
-    tone: "critical",
-    icon: "⛔",
-    text: {
-      academic: "Dietary fat supplies the precursor molecules for steroid hormone synthesis, including estrogen and testosterone, and carries the fat-soluble vitamins A, D, E, and K. Sustained intake below this threshold is associated with reduced hormone levels<sup class=\"cite\"><a href=\"#ref-12\">12</a></sup>, a consideration of particular relevance during hormone therapy. Contest-preparation guidance recommends maintaining fat at 15 to 30 percent of calories even during aggressive deficits<sup class=\"cite\"><a href=\"#ref-8\">8</a></sup>.",
-      conversational: "Dietary fat is the raw material for hormones like estrogen and testosterone, and it carries vitamins A, D, E, and K. Held this low for a while, hormone levels tend to suffer<sup class=\"cite\"><a href=\"#ref-12\">12</a></sup>, which matters even more if you're on HRT. Even in deep cuts, guidance keeps fat at 15 to 30% of calories<sup class=\"cite\"><a href=\"#ref-8\">8</a></sup>. This isn't the place to save calories.",
-    },
-  };
-  if (gkg < 0.75) return {
-    label: { academic: "Marginal", conversational: "Cutting it close" },
-    tone: "serious",
-    icon: "⚠",
-    text: {
-      academic: "Workable for a brief, disciplined phase, but the margin is small. Indicators worth monitoring include low energy, dry skin, poor sleep, and changes in menstrual cycle or hormonal symptoms; any of these warrant increasing intake.",
-      conversational: "Workable for a short, disciplined cut, but there's not much room to spare. Watch for low energy, dry skin, poor sleep, or cycle and hormonal changes, and nudge the slider up if any of those show up.",
-    },
-  };
-  if (gkg <= 1.1) return {
-    label: { academic: "Optimal range", conversational: "Sweet spot" },
-    tone: "good",
-    icon: "✓",
-    text: {
-      academic: "Sufficient to support hormone production and fat-soluble vitamin absorption. Fat also slows gastric emptying, extending satiety, at a moderate calorie cost given its 9 kcal per gram density.",
-      conversational: "Enough fat to keep hormone production and vitamin absorption running smoothly. It also slows digestion, so meals keep you full for longer, without dragging your daily total up too far.",
-    },
-  };
-  if (gkg <= 1.35) return {
-    label: { academic: "Above requirement", conversational: "Higher fat" },
-    tone: "neutral",
-    icon: "🥑",
-    text: {
-      academic: "A reasonable preference if fat-dense foods aid dietary adherence; hormonal needs are already met at this point. Each gram of fat costs 9 kcal, more than double protein or carbohydrate, so total daily calories climb quickly beyond this level.",
-      conversational: "A fine choice if fatty foods are what keep you satisfied. Your hormones were already covered a while back. Just remember every gram of fat costs 9 kcal, more than double protein or carbs, so your daily total climbs fast up here.",
-    },
-  };
-  return {
-    label: { academic: "Displacing calorie budget", conversational: "Costly to keep low" },
-    tone: "serious",
-    icon: "⚠",
-    text: {
-      academic: "Beyond any hormonal benefit. At 9 kcal per gram, fat intake at this level makes a meaningful contribution to total daily calories on its own. Appropriate for a deliberate higher-fat approach; otherwise, consider reducing intake to lower the daily total.",
-      conversational: "Beyond any hormonal benefit. At 9 kcal a gram, fat at this level is doing a lot of the work in your daily total on its own. Fine if you're deliberately going higher-fat, otherwise slide it back down to bring your total calories lower.",
-    },
-  };
+  if (gkg < 0.6) return { key: "fz_risk", tone: "critical", icon: "⛔" };
+  if (gkg < 0.75) return { key: "fz_close", tone: "serious", icon: "⚠" };
+  if (gkg <= 1.1) return { key: "fz_sweet", tone: "good", icon: "✓" };
+  if (gkg <= 1.35) return { key: "fz_higher", tone: "neutral", icon: "🥑" };
+  return { key: "fz_costly", tone: "serious", icon: "⚠" };
 }
 
 /**
@@ -304,51 +252,22 @@ function fatZone(gkg) {
  * glycogen available the body has less reason to burn amino acids.
  */
 function carbZone(gPerKg) {
-  if (gPerKg < 0.75) return {
-    label: { academic: "Ketogenic range", conversational: "Keto territory" },
-    tone: "serious",
-    icon: "⚠",
-    text: {
-      academic: "A markedly low carbohydrate intake, and the easiest lever for reducing total daily calories toward their floor. Sustainable if adopted deliberately; some individuals report improved appetite control at this level, but reduced training capacity should be expected during the initial adaptation period, particularly for high-intensity efforts.",
-      conversational: "Very low carb, and the fastest way to bring your daily total down. Totally doable if it's a deliberate choice (some people like it for appetite control), but expect flat, heavy workouts for the first few weeks, and less top-end in intense training.",
-    },
-  };
-  if (gPerKg < 2) return {
-    label: { academic: "Limited fuel", conversational: "Low fuel" },
-    tone: "neutral",
-    icon: "🔋",
-    text: {
-      academic: "Sufficient for daily activity and light training. Hard or prolonged sessions will draw on glycogen reserves; reduced training performance at this level is attributable to carbohydrate availability. Concentrating intake around training sessions improves utilization.",
-      conversational: "Enough for daily life and light training. Hard or long sessions will dip into your reserves; if workouts start feeling flat, this is probably why. Time most of these carbs around training for the best return.",
-    },
-  };
-  if (gPerKg <= 4) return {
-    label: { academic: "Adequate fuel", conversational: "Moderate fuel" },
-    tone: "good",
-    icon: "✓",
-    text: {
-      academic: "Adequate glycogen replenishment for regular training<sup class=\"cite\"><a href=\"#ref-13\">13</a></sup>. Carbohydrate is also protein-sparing: when glycogen is available, the body relies less on amino acid oxidation for energy, providing an additional layer of muscle protection. This is typically the lowest carbohydrate level within the well-supported range, making it the natural starting point when minimizing total calories.",
-      conversational: "Solid glycogen for regular training<sup class=\"cite\"><a href=\"#ref-13\">13</a></sup>. Carbs are also protein-sparing: with fuel on hand, your body has less reason to burn muscle for energy, one more layer of protection for the muscle you're working to keep. This is usually the low end of the comfortable zone, a good place to aim for if you're trying to bring your total calories down without leaving the sweet spot.",
-    },
-  };
-  return {
-    label: { academic: "High fuel", conversational: "High fuel" },
-    tone: "good",
-    icon: "🚀",
-    text: {
-      academic: "Ample glycogen availability, well suited to high training volumes or physically demanding occupations. If activity level is lower than this, reducing carbohydrate toward the adequate-fuel range would lower total daily calories with little practical downside.",
-      conversational: "Plenty of glycogen, well suited to high training volumes or a physical job. If you're not that active, easing this down toward the moderate-fuel range would bring your daily total down without much of a downside.",
-    },
-  };
+  if (gPerKg < 0.75) return { key: "cz_keto", tone: "serious", icon: "⚠" };
+  if (gPerKg < 2) return { key: "cz_low", tone: "neutral", icon: "🔋" };
+  if (gPerKg <= 4) return { key: "cz_mod", tone: "good", icon: "✓" };
+  return { key: "cz_high", tone: "good", icon: "🚀" };
 }
+
+function zoneLabel(zone) { return t(`${zone.key}_label`); }
+function zoneText(zone) { return t(`${zone.key}_text`); }
 
 function renderZone(outId, zoneId, gdayId, refKg, grams, zone, decimals) {
   $(outId).value = Math.round(grams);
   const gkg = Number.isFinite(refKg) && refKg > 0 ? grams / refKg : NaN;
   $(gdayId).textContent = Number.isFinite(gkg) ? `(${gkg.toFixed(decimals)} g/kg)` : "";
   $(zoneId).innerHTML = `
-    <span class="zone-chip zone-${zone.tone}"><span aria-hidden="true">${zone.icon}</span> ${reg(zone.label)}</span>
-    <p>${reg(zone.text)}</p>`;
+    <span class="zone-chip zone-${zone.tone}"><span aria-hidden="true">${zone.icon}</span> ${zoneLabel(zone)}</span>
+    <p>${zoneText(zone)}</p>`;
 }
 
 function renderProteinZone() {
@@ -437,26 +356,13 @@ function calculate() {
     const maxDeficit = MAX_DEFICIT_FRACTION * tdee;
     suggestedDeficit = Math.min(paceDeficit, maxDeficit);
     if (paceDeficit > maxDeficit * 1.05) {
-      warnings.push({
-        academic: "The pace selected would imply a deficit exceeding 25 percent of maintenance calories for the suggested target. The suggestion has been capped at 25 percent; a slower pace is recommended.",
-        conversational: "Your chosen pace would put the suggested target's deficit above 25% of maintenance. We've capped the suggestion at 25%, so pick a gentler pace if you want the target itself to move.",
-      });
+      warnings.push(t("w_target_capped"));
     }
     targetCalories = tdee - suggestedDeficit;
   } else {
     suggestedDeficit = 0;
     targetCalories = tdee;
-    warnings.push(
-      targetKg > weightKg + 0.05
-        ? {
-            academic: "Target weight exceeds current weight, so the suggested target reflects maintenance intake. For lean mass gain, a surplus of 5 to 10 percent above maintenance, combined with adequate protein intake, is generally recommended.",
-            conversational: "Your target is above your current weight, so the suggested number is for maintaining, not losing. For lean muscle gain, add a small surplus of 5 to 10% on top and keep protein high.",
-          }
-        : {
-            academic: "Target weight equals current weight, so the suggested target reflects maintenance intake.",
-            conversational: "Your target is the same as your current weight, so the suggested number is for maintaining.",
-          }
-    );
+    warnings.push(t(targetKg > weightKg + 0.05 ? "w_target_above" : "w_target_equal"));
   }
 
   // Actual intake: protein, fat, and carbs are each set independently by
@@ -476,36 +382,14 @@ function calculate() {
   const ckg = carbsG / weightKg;
 
   if (actualCalories < MIN_CALORIES) {
-    warnings.push({
-      academic: `Actual intake falls below ${MIN_CALORIES} kcal/day, a level generally considered inadequate to meet nutrient needs without clinical supervision. Increasing one or more macronutrient settings, or consulting a qualified professional, is recommended.`,
-      conversational: `Your sliders add up to under ${MIN_CALORIES} kcal a day, which is hard to get proper nutrition from without medical supervision. Bring one of the sliders up, or talk to a professional.`,
-    });
+    warnings.push(tf("w_min_calories", MIN_CALORIES));
   } else if (actualDeficit > MAX_DEFICIT_FRACTION * tdee) {
-    warnings.push({
-      academic: "The current macro settings create an energy deficit exceeding 25 percent of maintenance calories, which increases the risk of muscle loss and metabolic rebound. Increasing carbohydrate or fat intake is recommended.",
-      conversational: "Your sliders currently add up to more than 25% below maintenance, which risks losing muscle and rebounding later. Try adding back some carbs or fat.",
-    });
+    warnings.push(t("w_deficit_high"));
   }
 
-  if (gkg < 1.6) {
-    warnings.push({
-      academic: "Protein intake is set below 1.6 g/kg. If total intake is also below maintenance, a portion of the resulting weight loss is likely to derive from skeletal muscle rather than fat mass. Increasing intake toward the 1.6–2.2 g/kg range is recommended.",
-      conversational: "Protein is set below 1.6 g/kg. If you're also in a deficit, some of the weight you lose will likely come from muscle instead of fat. Slide protein up toward the 1.6–2.2 g/kg range to protect it.",
-    });
-  }
-  if (fkg < 0.6) {
-    warnings.push({
-      academic: "Fat intake is set below 0.6 g/kg. Sustained at this level, hormone production and fat-soluble vitamin absorption may be impaired. Increasing intake to at least 0.6–0.8 g/kg is recommended.",
-      conversational: "Fat is set below 0.6 g/kg. Kept there for a while, hormone production and vitamin absorption tend to suffer. Slide fat up to at least 0.6–0.8 g/kg.",
-    });
-  }
-
-  if (age < 18) {
-    warnings.push({
-      academic: "This calculator is not calibrated for individuals under 18 years of age, whose nutritional requirements differ substantially due to ongoing growth and development. Consultation with a doctor or registered dietitian is recommended.",
-      conversational: "You're under 18: growing bodies have different needs, and this calculator isn't built for that. Please loop in a doctor or dietitian.",
-    });
-  }
+  if (gkg < 1.6) warnings.push(t("w_protein_low"));
+  if (fkg < 0.6) warnings.push(t("w_fat_low"));
+  if (age < 18) warnings.push(t("w_under18"));
 
   const proteinTone = proteinZone(gkg).tone;
   const fatTone = fatZone(fkg).tone;
@@ -568,9 +452,9 @@ function macroBar(r) {
   const total = pKcal + cKcal + fKcal || 1;
   const pct = (x) => Math.max((x / total) * 100, 0);
   const seg = [
-    { name: "Protein", grams: r.proteinG, kcal: pKcal, cls: "protein" },
-    { name: "Carbs", grams: r.carbsG, kcal: cKcal, cls: "carbs" },
-    { name: "Fat", grams: r.fatG, kcal: fKcal, cls: "fat" },
+    { name: t("macro_protein"), grams: r.proteinG, kcal: pKcal, cls: "protein" },
+    { name: t("macro_carbs"), grams: r.carbsG, kcal: cKcal, cls: "carbs" },
+    { name: t("macro_fat"), grams: r.fatG, kcal: fKcal, cls: "fat" },
   ];
 
   const bars = seg
@@ -590,7 +474,7 @@ function macroBar(r) {
     .join("");
 
   return `
-    <div class="macro-bar" role="img" aria-label="Calorie split: protein ${Math.round(pct(pKcal))}%, carbs ${Math.round(pct(cKcal))}%, fat ${Math.round(pct(fKcal))}%">${bars}</div>
+    <div class="macro-bar" role="img" aria-label="${seg.map((s) => `${s.name} ${Math.round(pct(s.kcal))}%`).join(", ")}">${bars}</div>
     <div class="legend">${legend}</div>`;
 }
 
@@ -599,26 +483,17 @@ function render() {
   const out = $("results");
 
   if (!r) {
-    out.innerHTML = `<div class="card muted-card"><p>Fill in your details above and your numbers will appear here.</p></div>`;
+    out.innerHTML = `<div class="card muted-card"><p>${t("results_placeholder")}</p></div>`;
     return;
   }
 
   const delta = r.actualCalories - r.targetCalories;
   const closeEnough = Math.abs(delta) < 15;
   const compareLine = closeEnough
-    ? reg({
-        academic: `This closely matches the suggested target of ${fmt(r.targetCalories)} kcal.`,
-        conversational: `That's right at your ~${fmt(r.targetCalories)} kcal suggested target.`,
-      })
+    ? tf("compare_close", fmt(r.targetCalories))
     : delta < 0
-    ? reg({
-        academic: `This is ${fmt(-delta)} kcal below the suggested target of ${fmt(r.targetCalories)} kcal.`,
-        conversational: `That's ${fmt(-delta)} kcal below your ~${fmt(r.targetCalories)} kcal target.`,
-      })
-    : reg({
-        academic: `This is ${fmt(delta)} kcal above the suggested target of ${fmt(r.targetCalories)} kcal.`,
-        conversational: `That's ${fmt(delta)} kcal above your ~${fmt(r.targetCalories)} kcal target.`,
-      });
+    ? tf("compare_below", fmt(-delta), fmt(r.targetCalories))
+    : tf("compare_above", fmt(delta), fmt(r.targetCalories));
 
   const etaDate = new Date(Date.now() + r.weeks * 7 * 864e5);
   const eta = etaDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
@@ -626,35 +501,26 @@ function render() {
   let timeline;
   if (r.timelineState === "losing") {
     timeline = `<div class="tile">
-         <div class="tile-label">Weekly loss</div>
+         <div class="tile-label">${t("tile_weekly_loss")}</div>
          <div class="tile-value">${fmtWeight(r.actualWeeklyLossKg)}</div>
-         <div class="tile-sub">${reg({
-           academic: `approximately ${Math.ceil(r.weeks)} weeks, reaching target around ${eta}`,
-           conversational: `about ${Math.ceil(r.weeks)} weeks, around ${eta}`,
-         })}</div>
+         <div class="tile-sub">${tf("timeline_losing", Math.ceil(r.weeks), eta)}</div>
        </div>`;
   } else if (r.timelineState === "gaining") {
     timeline = `<div class="tile">
-         <div class="tile-label">Weekly change</div>
+         <div class="tile-label">${t("tile_weekly_change")}</div>
          <div class="tile-value">+${fmtWeight(-r.actualWeeklyLossKg)}</div>
-         <div class="tile-sub">${reg({
-           academic: "current settings produce a caloric surplus",
-           conversational: "your sliders add up to a surplus right now",
-         })}</div>
+         <div class="tile-sub">${t("timeline_gaining")}</div>
        </div>`;
   } else {
     timeline = `<div class="tile">
-         <div class="tile-label">Mode</div>
-         <div class="tile-value">Maintain</div>
-         <div class="tile-sub">${reg({
-           academic: "intake closely matches maintenance expenditure",
-           conversational: "your total is right around maintenance",
-         })}</div>
+         <div class="tile-label">${t("tile_mode")}</div>
+         <div class="tile-value">${t("tile_maintain")}</div>
+         <div class="tile-sub">${t("timeline_flat")}</div>
        </div>`;
   }
 
   const warnings = r.warnings
-    .map((w) => `<div class="notice"><span class="notice-icon" aria-hidden="true">⚠</span><p>${reg(w)}</p></div>`)
+    .map((w) => `<div class="notice"><span class="notice-icon" aria-hidden="true">⚠</span><p>${w}</p></div>`)
     .join("");
 
   const proteinZ = proteinZone(r.proteinG / r.proteinRefKg);
@@ -664,50 +530,47 @@ function render() {
   const goodNotice = r.allGood
     ? `<div class="notice success">
         <span class="notice-icon" aria-hidden="true">🎯</span>
-        <p>${reg({
-          academic: `All three macronutrients fall within their evidence-based optimal ranges at a total daily intake of ${fmt(r.actualCalories)} kcal. This is approximately the lowest energy level achievable here without moving a macronutrient outside its recommended range.`,
-          conversational: `Every macro is in its sweet spot at just ${fmt(r.actualCalories)} kcal a day. That's about as low as you can go here without pushing one of them out of its safe range.`,
-        })}</p>
+        <p>${tf("good_notice", fmt(r.actualCalories))}</p>
       </div>`
     : "";
 
   out.innerHTML = `
     <div class="card">
       <div class="hero-number">
-        <div class="tile-label">${reg({ academic: "Total daily intake", conversational: "Your daily total" })}</div>
+        <div class="tile-label">${t("hero_label")}</div>
         <div class="hero-value"><span data-count="cal">${fmt(r.actualCalories)}</span> <span class="hero-unit">kcal</span></div>
         <div class="tile-sub">${compareLine}</div>
       </div>
 
       ${goodNotice}
 
-      <h2 class="section-title">Daily macros</h2>
+      <h2 class="section-title">${t("results_daily_macros")}</h2>
       ${macroBar(r)}
       <table class="macro-table">
-        <thead><tr><th scope="col">Macro</th><th scope="col">Grams / day</th><th scope="col">kcal</th><th scope="col">Why</th></tr></thead>
+        <thead><tr><th scope="col">${t("table_macro")}</th><th scope="col">${t("table_grams_day")}</th><th scope="col">${t("table_kcal")}</th><th scope="col">${t("table_why")}</th></tr></thead>
         <tbody>
-          <tr><td>Protein</td><td>${fmt(r.proteinG)} g</td><td>${fmt(r.proteinG * 4)}</td><td>${(r.proteinG / r.proteinRefKg).toFixed(1)} g/kg · ${reg(proteinZ.label).toLowerCase()}</td></tr>
-          <tr><td>Carbs</td><td>${fmt(r.carbsG)} g</td><td>${fmt(r.carbsG * 4)}</td><td>${(r.carbsG / r.weightKg).toFixed(1)} g/kg · ${reg(carbZ.label).toLowerCase()}</td></tr>
-          <tr><td>Fat</td><td>${fmt(r.fatG)} g</td><td>${fmt(r.fatG * 9)}</td><td>${(r.fatG / r.proteinRefKg).toFixed(2)} g/kg · ${reg(fatZ.label).toLowerCase()}</td></tr>
+          <tr><td>${t("macro_protein")}</td><td>${fmt(r.proteinG)} g</td><td>${fmt(r.proteinG * 4)}</td><td>${(r.proteinG / r.proteinRefKg).toFixed(1)} g/kg · ${zoneLabel(proteinZ).toLowerCase()}</td></tr>
+          <tr><td>${t("macro_carbs")}</td><td>${fmt(r.carbsG)} g</td><td>${fmt(r.carbsG * 4)}</td><td>${(r.carbsG / r.weightKg).toFixed(1)} g/kg · ${zoneLabel(carbZ).toLowerCase()}</td></tr>
+          <tr><td>${t("macro_fat")}</td><td>${fmt(r.fatG)} g</td><td>${fmt(r.fatG * 9)}</td><td>${(r.fatG / r.proteinRefKg).toFixed(2)} g/kg · ${zoneLabel(fatZ).toLowerCase()}</td></tr>
         </tbody>
       </table>
 
-      <h2 class="section-title">The numbers behind it</h2>
+      <h2 class="section-title">${t("results_numbers_behind")}</h2>
       <div class="tiles">
         <div class="tile">
-          <div class="tile-label">Resting metabolism (BMR)</div>
+          <div class="tile-label">${t("tile_bmr")}</div>
           <div class="tile-value"><span data-count="bmr">${fmt(r.bmr)}</span> kcal</div>
-          <div class="tile-sub">Mifflin-St Jeor <sup class="cite"><a href="#ref-1">1</a></sup></div>
+          <div class="tile-sub">${t("tile_bmr_sub")} <sup class="cite"><a href="#ref-1">1</a></sup></div>
         </div>
         <div class="tile">
-          <div class="tile-label">Maintenance (TDEE)</div>
+          <div class="tile-label">${t("tile_tdee")}</div>
           <div class="tile-value"><span data-count="tdee">${fmt(r.tdee)}</span> kcal</div>
-          <div class="tile-sub">BMR × activity <sup class="cite"><a href="#ref-3">3</a></sup></div>
+          <div class="tile-sub">${t("tile_tdee_sub")} <sup class="cite"><a href="#ref-3">3</a></sup></div>
         </div>
         <div class="tile">
-          <div class="tile-label">Suggested target</div>
+          <div class="tile-label">${t("tile_target")}</div>
           <div class="tile-value">${fmt(r.targetCalories)} kcal</div>
-          <div class="tile-sub">${reg({ academic: "from selected pace", conversational: "based on your pace" })}</div>
+          <div class="tile-sub">${t("target_sub")}</div>
         </div>
         ${timeline}
       </div>
@@ -716,11 +579,12 @@ function render() {
 
       <div class="notice tip">
         <span class="notice-icon" aria-hidden="true">💪</span>
-        <p>${reg({
-          academic: `<strong>Muscle preservation:</strong> a caloric deficit spares muscle only when resistance training provides a physiological stimulus to retain it<sup class="cite"><a href="#ref-9">9</a></sup>. Resistance train 2 to 4 times weekly, meet the daily protein target across 3 to 5 meals, and obtain 7 to 9 hours of sleep.`,
-          conversational: `<strong>Keep the muscle:</strong> a calorie deficit only spares muscle if you give your body a reason to keep it<sup class="cite"><a href="#ref-9">9</a></sup>. Do resistance training 2 to 4 times a week, hit your protein number daily (spread over 3 to 5 meals), and sleep 7 to 9 hours.`,
-        })}</p>
+        <p>${t("muscle_tip")}</p>
       </div>
+
+      <button type="button" id="export-mealplan" class="export-btn">
+        <span aria-hidden="true">📋</span> ${t("export_btn")}
+      </button>
     </div>`;
 
   // Animate from the previous render's state instead of snapping.
@@ -733,6 +597,222 @@ function render() {
   const widths = {};
   out.querySelectorAll(".macro-bar .seg-fill").forEach((seg) => { widths[seg.dataset.macro] = seg.style.width; });
   renderCache = { calories: r.actualCalories, bmr: r.bmr, tdee: r.tdee, widths };
+}
+
+/* ---------- meal plan export ---------- */
+
+function fmtHeight() {
+  if (currentUnits() === "imperial") {
+    return `${$("height-ft").value || 0} ft ${$("height-in").value || 0} in`;
+  }
+  return `${$("height-cm").value} cm`;
+}
+
+function selectedLabel(id) {
+  const el = $(id);
+  return el.options[el.selectedIndex] ? el.options[el.selectedIndex].textContent : "";
+}
+
+function foodListHTML(items) {
+  return items.map(([name, reason]) => `<li><strong>${name}</strong>, ${reason}</li>`).join("");
+}
+
+function mealIdeaListHTML(items) {
+  return items.map((idea) => `<li>${idea}</li>`).join("");
+}
+
+function buildMealPlanHTML(r) {
+  const lang = currentLang();
+  const genDate = new Date().toLocaleDateString(lang === "en" ? "en-US" : lang, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const pKcal = r.proteinG * 4, cKcal = r.carbsG * 4, fKcal = r.fatG * 9;
+  const totalKcal = pKcal + cKcal + fKcal || 1;
+  const pct = (x) => Math.max((x / totalKcal) * 100, 0);
+  const proteinZ = proteinZone(r.proteinG / r.proteinRefKg);
+  const fatZ = fatZone(r.fatG / r.proteinRefKg);
+  const carbZ = carbZone(r.carbsG / r.weightKg);
+
+  const proteinFoods = (I18N.foods_protein[lang] || I18N.foods_protein.en);
+  const carbFoods = (I18N.foods_carb[lang] || I18N.foods_carb.en);
+  const fatFoods = (I18N.foods_fat[lang] || I18N.foods_fat.en);
+  const ideasBreakfast = (I18N.ideas_breakfast[lang] || I18N.ideas_breakfast.en);
+  const ideasLunch = (I18N.ideas_lunch[lang] || I18N.ideas_lunch.en);
+  const ideasDinner = (I18N.ideas_dinner[lang] || I18N.ideas_dinner.en);
+  const ideasSnacks = (I18N.ideas_snacks[lang] || I18N.ideas_snacks.en);
+
+  const mpEtaDate = new Date(Date.now() + r.weeks * 7 * 864e5);
+  const mpEta = mpEtaDate.toLocaleDateString(lang === "en" ? "en-US" : lang, { month: "long", year: "numeric" });
+  const timelineText =
+    r.timelineState === "losing"
+      ? `${t("tile_weekly_loss")}: ${fmtWeight(r.actualWeeklyLossKg)}, ${tf("timeline_losing", Math.ceil(r.weeks), mpEta)}`
+      : r.timelineState === "gaining"
+      ? `${t("tile_weekly_change")}: +${fmtWeight(-r.actualWeeklyLossKg)}`
+      : t("timeline_flat");
+
+  return `<!DOCTYPE html>
+<html lang="${lang}">
+<head>
+<meta charset="UTF-8" />
+<title>${t("mp_title")}, ${genDate}</title>
+<style>
+  :root {
+    --page: #f9f9f7; --surface: #ffffff; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --hairline: #e1e0d9; --border: rgba(11,11,11,0.10); --accent: #2a78d6;
+    --protein: #2a78d6; --carbs: #eb6834; --fat: #1baf7a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.55; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 2rem 1.25rem 3rem; }
+  h1 { font-size: 1.9rem; margin: 0 0 0.2rem; letter-spacing: -0.01em; }
+  .subtitle { color: var(--ink-2); margin: 0 0 1.5rem; }
+  h2 { font-size: 1.15rem; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 2px solid var(--hairline); }
+  h3 { font-size: 1rem; margin: 1.25rem 0 0.5rem; }
+  .section-note { color: var(--ink-2); font-size: 0.92rem; margin: 0 0 0.9rem; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.1rem 1.3rem; margin-bottom: 1rem; }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.7rem 1.2rem; font-size: 0.92rem; }
+  .facts dt { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; margin: 0; }
+  .facts dd { margin: 0.1rem 0 0; font-weight: 600; }
+  .hero-cals { text-align: center; margin: 1.2rem 0; }
+  .hero-cals .big { font-size: 2.6rem; font-weight: 700; letter-spacing: -0.02em; }
+  .hero-cals .unit { font-size: 1.1rem; color: var(--ink-2); font-weight: 500; }
+  .hero-cals .sub { color: var(--ink-2); font-size: 0.9rem; margin-top: 0.2rem; }
+  .macro-bar { display: flex; gap: 2px; height: 22px; border-radius: 6px; overflow: hidden; margin: 1rem 0 0.6rem; }
+  .macro-bar span { display: block; }
+  .protein-fill { background: var(--protein); }
+  .carbs-fill { background: var(--carbs); }
+  .fat-fill { background: var(--fat); }
+  .legend { display: flex; gap: 1.5rem; flex-wrap: wrap; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  .legend span.dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 0.35rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 0.5rem; }
+  th, td { text-align: left; padding: 0.45rem 0.5rem; border-bottom: 1px solid var(--hairline); }
+  th { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .chip { display: inline-block; padding: 0.1rem 0.55rem; border-radius: 999px; font-size: 0.78rem; font-weight: 600; border: 1px solid var(--border); }
+  .chip-good { background: rgba(12,163,12,0.12); border-color: #0ca30c; }
+  .chip-neutral { background: rgba(42,120,214,0.12); border-color: var(--accent); }
+  .chip-serious { background: rgba(236,131,90,0.16); border-color: #ec835a; }
+  .chip-critical { background: rgba(208,59,59,0.14); border-color: #d03b3b; }
+  .foods-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; }
+  .foods-grid h3 { margin-top: 0; }
+  .foods-grid ul, .ideas ul { margin: 0; padding-left: 1.1rem; font-size: 0.88rem; color: var(--ink-2); }
+  .foods-grid li, .ideas li { margin-bottom: 0.5rem; }
+  .foods-grid li strong, .ideas li strong { color: var(--ink); }
+  .ideas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+  .toolbar { display: flex; gap: 0.6rem; margin-bottom: 1.5rem; }
+  .toolbar button { font: inherit; padding: 0.55rem 1.1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; }
+  .toolbar .hint { align-self: center; color: var(--muted); font-size: 0.82rem; }
+  .foot { color: var(--muted); font-size: 0.82rem; margin-top: 2rem; border-top: 1px solid var(--hairline); padding-top: 1rem; }
+  @page { margin: 1.6cm; }
+  @media print {
+    .no-print { display: none !important; }
+    body { background: #fff; }
+    .wrap { max-width: none; padding: 0; }
+    .card { border-color: #ccc; break-inside: avoid; page-break-inside: avoid; }
+    .facts, table, tr, .foot { break-inside: avoid; page-break-inside: avoid; }
+    /* CSS Grid doesn't paginate reliably; stack these so print can break cleanly between items */
+    .foods-grid, .ideas-grid { display: block; }
+    .foods-grid > div, .ideas-grid > div { break-inside: avoid; page-break-inside: avoid; margin-bottom: 1rem; }
+    h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
+    h2 { break-before: page; page-break-before: always; }
+    h2:first-of-type { break-before: avoid; page-break-before: avoid; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="toolbar no-print">
+      <button type="button" onclick="window.print()">🖨️ ${t("mp_print_btn")}</button>
+      <span class="hint">${t("mp_print_hint")}</span>
+    </div>
+
+    <h1>${t("mp_title")}</h1>
+    <p class="subtitle">${tf("mp_generated", genDate)}</p>
+
+    <h2>${t("mp_overview")}</h2>
+    <p class="section-note">${t("mp_overview_note")}</p>
+
+    <div class="card">
+      <dl class="facts">
+        <div><dt>${t("field_age")}</dt><dd>${$("age").value} ${t("unit_years")}</dd></div>
+        <div><dt>${t("field_height")}</dt><dd>${fmtHeight()}</dd></div>
+        <div><dt>${t("field_weight")}</dt><dd>${fmtWeight(r.weightKg)}</dd></div>
+        <div><dt>${t("field_target_weight")}</dt><dd>${fmtWeight(r.targetKg)}</dd></div>
+        <div><dt>${t("field_profile")}</dt><dd>${selectedLabel("profile")}</dd></div>
+        <div><dt>${t("field_activity")}</dt><dd>${selectedLabel("activity")}</dd></div>
+        <div><dt>${t("field_pace")}</dt><dd>${selectedLabel("pace")}</dd></div>
+        <div><dt>${t("mp_explanation_style")}</dt><dd>${currentRegister() === "conversational" ? t("register_conversational") : t("register_academic")}</dd></div>
+      </dl>
+
+      <div class="hero-cals">
+        <div class="big">${fmt(r.actualCalories)}</div>
+        <span class="unit">${t("mp_kcal_day")}</span>
+        <div class="sub">${t("mp_suggested_target")}: ${fmt(r.targetCalories)} kcal &middot; ${timelineText}</div>
+      </div>
+
+      <div class="macro-bar">
+        <span class="protein-fill" style="width:${pct(pKcal).toFixed(1)}%"></span>
+        <span class="carbs-fill" style="width:${pct(cKcal).toFixed(1)}%"></span>
+        <span class="fat-fill" style="width:${pct(fKcal).toFixed(1)}%"></span>
+      </div>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--protein)"></span>${t("macro_protein")} ${fmt(r.proteinG)} g &middot; ${Math.round(pct(pKcal))}%</span>
+        <span><span class="dot" style="background:var(--carbs)"></span>${t("macro_carbs")} ${fmt(r.carbsG)} g &middot; ${Math.round(pct(cKcal))}%</span>
+        <span><span class="dot" style="background:var(--fat)"></span>${t("macro_fat")} ${fmt(r.fatG)} g &middot; ${Math.round(pct(fKcal))}%</span>
+      </div>
+
+      <table>
+        <thead><tr><th>${t("table_macro")}</th><th>${t("table_grams_day")}</th><th>${t("table_kcal")}</th><th>${t("mp_status")}</th></tr></thead>
+        <tbody>
+          <tr><td>${t("macro_protein")}</td><td>${fmt(r.proteinG)} g</td><td>${fmt(pKcal)}</td><td><span class="chip chip-${proteinZ.tone}">${zoneLabel(proteinZ)}</span></td></tr>
+          <tr><td>${t("macro_carbs")}</td><td>${fmt(r.carbsG)} g</td><td>${fmt(cKcal)}</td><td><span class="chip chip-${carbZ.tone}">${zoneLabel(carbZ)}</span></td></tr>
+          <tr><td>${t("macro_fat")}</td><td>${fmt(r.fatG)} g</td><td>${fmt(fKcal)}</td><td><span class="chip chip-${fatZ.tone}">${zoneLabel(fatZ)}</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>${t("mp_foods_title")}</h2>
+    <p class="section-note">${t("mp_foods_note")}</p>
+    <div class="card foods-grid">
+      <div>
+        <h3 style="color:var(--protein)">${t("macro_protein")}</h3>
+        <ul>${foodListHTML(proteinFoods)}</ul>
+      </div>
+      <div>
+        <h3 style="color:var(--carbs)">${t("macro_carbs")}</h3>
+        <ul>${foodListHTML(carbFoods)}</ul>
+      </div>
+      <div>
+        <h3 style="color:var(--fat)">${t("macro_fat")}</h3>
+        <ul>${foodListHTML(fatFoods)}</ul>
+      </div>
+    </div>
+
+    <h2>${t("mp_ideas_title")}</h2>
+    <p class="section-note">${t("mp_ideas_note")}</p>
+    <div class="card ideas">
+      <div class="ideas-grid">
+        <div><h3>${t("mp_breakfast")}</h3><ul>${mealIdeaListHTML(ideasBreakfast)}</ul></div>
+        <div><h3>${t("mp_lunch")}</h3><ul>${mealIdeaListHTML(ideasLunch)}</ul></div>
+        <div><h3>${t("mp_dinner")}</h3><ul>${mealIdeaListHTML(ideasDinner)}</ul></div>
+        <div><h3>${t("mp_snacks")}</h3><ul>${mealIdeaListHTML(ideasSnacks)}</ul></div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <p>${t("footer_disclaimer")}</p>
+      <p>${t("mp_generated_by")}</p>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+function exportMealPlan() {
+  const r = calculate();
+  if (!r) return;
+  const html = buildMealPlanHTML(r);
+  const blob = new Blob([html], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank");
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
 /* ---------- wiring ---------- */
@@ -782,14 +862,27 @@ function renderAllZones() {
   renderCarbZone();
 }
 
+function refreshTexts() {
+  translatePage();
+  renderAllZones();
+  render();
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   loadState();
   loadRegister();
+  populateLangSelect();
+  loadLang();
   syncUnitFields();
   syncProfileFields();
   updateSliderBounds();
+  translatePage();
   renderAllZones();
   render();
+
+  $("results").addEventListener("click", (e) => {
+    if (e.target.closest("#export-mealplan")) exportMealPlan();
+  });
 
   $("calc-form").addEventListener("input", (e) => {
     if (e.target.name === "units") {
@@ -824,10 +917,18 @@ document.addEventListener("DOMContentLoaded", () => {
     el.addEventListener("change", (e) => {
       applyRegister(e.target.value);
       saveRegister(e.target.value);
-      renderAllZones();
-      render();
+      refreshTexts();
     });
   });
+
+  const langSelect = $("lang-select");
+  if (langSelect) {
+    langSelect.addEventListener("change", (e) => {
+      applyLang(e.target.value);
+      saveLang(e.target.value);
+      refreshTexts();
+    });
+  }
 
   // Reveal the science/references cards as they scroll into view.
   if ("IntersectionObserver" in window) {

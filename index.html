@@ -11,22 +11,28 @@
 <body>
   <main class="wrap">
     <header class="hero">
-      <h1>Macro Calculator</h1>
-      <p class="tagline reg-academic">A quantitative tool for estimating daily energy and macronutrient intake to support fat loss while preserving lean muscle mass.</p>
-      <p class="tagline reg-conversational">Daily calories and macros to lose fat at a healthy pace, with enough protein to hold onto your muscle.</p>
+      <h1 data-i18n="h1_title">Macro Calculator</h1>
+      <p class="tagline" data-i18n="tagline"></p>
       <div class="hero-badges">
-        <span class="badge">📚 Every number referenced</span>
-        <a class="badge" href="#science">🔬 Open methods</a>
-        <span class="badge">🛡️ Runs 100% in your browser</span>
+        <span class="badge"><span aria-hidden="true">📚</span> <span data-i18n="badge_referenced"></span></span>
+        <a class="badge" href="#science"><span aria-hidden="true">🔬</span> <span data-i18n="badge_methods"></span></a>
+        <span class="badge"><span aria-hidden="true">🛡️</span> <span data-i18n="badge_browser"></span></span>
       </div>
 
-      <div class="register-row">
-        <span class="register-label" id="register-label">Explanations</span>
-        <div class="seg seg-register" role="radiogroup" aria-labelledby="register-label">
-          <input type="radio" name="register" id="register-academic" value="academic" checked />
-          <label for="register-academic">Academic</label>
-          <input type="radio" name="register" id="register-conversational" value="conversational" />
-          <label for="register-conversational">Conversational</label>
+      <div class="top-controls">
+        <div class="register-row">
+          <span class="register-label" id="lang-label" data-i18n="lang_label">Language</span>
+          <select id="lang-select" class="lang-select" aria-labelledby="lang-label"></select>
+        </div>
+
+        <div class="register-row">
+          <span class="register-label" id="register-label" data-i18n="register_label">Explanations</span>
+          <div class="seg seg-register" role="radiogroup" aria-labelledby="register-label">
+            <input type="radio" name="register" id="register-academic" value="academic" checked />
+            <label for="register-academic" data-i18n="register_academic">Academic</label>
+            <input type="radio" name="register" id="register-conversational" value="conversational" />
+            <label for="register-conversational" data-i18n="register_conversational">Conversational</label>
+          </div>
         </div>
       </div>
     </header>
@@ -36,98 +42,94 @@
         <legend class="sr-only">Unit system</legend>
         <div class="seg" role="radiogroup" aria-label="Unit system">
           <input type="radio" name="units" id="units-metric" value="metric" checked />
-          <label for="units-metric">Metric (kg · cm)</label>
+          <label for="units-metric" data-i18n="units_metric">Metric (kg · cm)</label>
           <input type="radio" name="units" id="units-imperial" value="imperial" />
-          <label for="units-imperial">Imperial (lb · ft/in)</label>
+          <label for="units-imperial" data-i18n="units_imperial">Imperial (lb · ft/in)</label>
         </div>
       </fieldset>
 
       <div class="grid">
         <div class="field">
-          <label for="age">Age <span class="unit">years</span></label>
+          <label for="age"><span data-i18n="field_age">Age</span> <span class="unit" data-i18n="unit_years">years</span></label>
           <input type="number" id="age" inputmode="numeric" min="16" max="100" step="1" value="30" required />
         </div>
 
         <div class="field" data-units="metric">
-          <label for="height-cm">Height <span class="unit">cm</span></label>
+          <label for="height-cm"><span data-i18n="field_height">Height</span> <span class="unit" data-i18n="unit_cm">cm</span></label>
           <input type="number" id="height-cm" inputmode="decimal" min="120" max="230" step="0.5" value="175" />
         </div>
         <div class="field field-pair" data-units="imperial" hidden>
-          <label for="height-ft">Height <span class="unit">ft / in</span></label>
+          <label for="height-ft"><span data-i18n="field_height">Height</span> <span class="unit" data-i18n="unit_ftin">ft / in</span></label>
           <div class="pair">
-            <input type="number" id="height-ft" inputmode="numeric" min="3" max="7" step="1" value="5" aria-label="Height, feet" />
-            <input type="number" id="height-in" inputmode="decimal" min="0" max="11.5" step="0.5" value="9" aria-label="Height, inches" />
+            <input type="number" id="height-ft" inputmode="numeric" min="3" max="7" step="1" value="5" data-i18n-aria="aria_height_ft" aria-label="Height, feet" />
+            <input type="number" id="height-in" inputmode="decimal" min="0" max="11.5" step="0.5" value="9" data-i18n-aria="aria_height_in" aria-label="Height, inches" />
           </div>
         </div>
 
         <div class="field">
-          <label for="weight">Current weight <span class="unit" data-weight-unit>kg</span></label>
+          <label for="weight"><span data-i18n="field_weight">Current weight</span> <span class="unit" data-weight-unit>kg</span></label>
           <input type="number" id="weight" inputmode="decimal" min="30" max="400" step="0.1" value="85" required />
         </div>
 
         <div class="field">
-          <label for="target-weight">Target weight <span class="unit" data-weight-unit>kg</span></label>
+          <label for="target-weight"><span data-i18n="field_target_weight">Target weight</span> <span class="unit" data-weight-unit>kg</span></label>
           <input type="number" id="target-weight" inputmode="decimal" min="30" max="400" step="0.1" value="75" required />
         </div>
       </div>
 
       <div class="field">
-        <label for="profile">Hormonal profile</label>
-        <p class="hint reg-academic">Metabolic equations are driven by hormone-dependent body composition rather than gender identity<sup class="cite"><a href="#ref-14">14</a>,<a href="#ref-15">15</a></sup>. Select the option that most closely matches current hormonal status; every stage of transition is represented.</p>
-        <p class="hint reg-conversational">Metabolism formulas depend on hormone-driven body composition, not identity<sup class="cite"><a href="#ref-14">14</a>,<a href="#ref-15">15</a></sup>. Pick what best matches your hormonal situation, there's an option for every stage of transition.</p>
+        <label for="profile" data-i18n="field_profile">Hormonal profile</label>
+        <p class="hint" data-i18n-html="hint_profile"></p>
         <select id="profile">
-          <option value="male">Male (typical testosterone-dominant)</option>
-          <option value="female">Female (typical estrogen-dominant)</option>
-          <option value="transfem">Trans woman / transfeminine</option>
-          <option value="transmasc">Trans man / transmasculine</option>
-          <option value="custom">Non-binary / intersex / custom blend</option>
+          <option value="male" data-i18n="opt_profile_male">Male (typical testosterone-dominant)</option>
+          <option value="female" data-i18n="opt_profile_female">Female (typical estrogen-dominant)</option>
+          <option value="transfem" data-i18n="opt_profile_transfem">Trans woman / transfeminine</option>
+          <option value="transmasc" data-i18n="opt_profile_transmasc">Trans man / transmasculine</option>
+          <option value="custom" data-i18n="opt_profile_custom">Non-binary / intersex / custom blend</option>
         </select>
       </div>
 
       <div class="field" id="hrt-field" hidden>
-        <label for="hrt-months">Time on hormone therapy <span class="unit">months</span></label>
-        <p class="hint reg-academic">Metabolic adaptation to hormone therapy occurs gradually over approximately the first 6 months of treatment. Enter 0 if therapy has not yet begun; the pre-therapy profile is used and shifted incrementally as the entered duration increases.</p>
-        <p class="hint reg-conversational">Metabolic changes from HRT settle in over roughly the first 6 months. Enter 0 if you haven't started yet, we'll use your pre-HRT profile and shift it gradually as the months go up.</p>
+        <label for="hrt-months"><span data-i18n="field_hrt_months">Time on hormone therapy</span> <span class="unit" data-i18n="unit_months">months</span></label>
+        <p class="hint" data-i18n-html="hint_hrt"></p>
         <input type="number" id="hrt-months" inputmode="numeric" min="0" max="600" step="1" value="0" />
       </div>
 
       <div class="field" id="blend-field" hidden>
-        <label for="blend">Where does your hormonal profile sit?</label>
-        <p class="hint reg-academic">Position the control between a typical estrogen-dominant metabolic profile (left) and a typical testosterone-dominant profile (right). If uncertain, the midpoint is a reasonable default.</p>
-        <p class="hint reg-conversational">Slide between a typical estrogen-dominant profile (left) and a typical testosterone-dominant profile (right). If you're not sure, leave it in the middle.</p>
+        <label for="blend" data-i18n="field_blend_question">Where does your hormonal profile sit?</label>
+        <p class="hint" data-i18n-html="hint_blend"></p>
         <div class="blend-row">
-          <span class="blend-end">Estrogen</span>
-          <input type="range" id="blend" min="0" max="100" step="5" value="50" aria-label="Hormonal profile blend, 0 is estrogen-dominant, 100 is testosterone-dominant" />
-          <span class="blend-end">Testosterone</span>
+          <span class="blend-end" data-i18n="blend_estrogen">Estrogen</span>
+          <input type="range" id="blend" min="0" max="100" step="5" value="50" data-i18n-aria="aria_blend" aria-label="Hormonal profile blend, 0 is estrogen-dominant, 100 is testosterone-dominant" />
+          <span class="blend-end" data-i18n="blend_testosterone">Testosterone</span>
         </div>
       </div>
 
       <div class="grid">
         <div class="field">
-          <label for="activity">Activity level</label>
+          <label for="activity" data-i18n="field_activity">Activity level</label>
           <select id="activity">
-            <option value="1.2">Sedentary: desk job, little exercise</option>
-            <option value="1.375">Lightly active: exercise 1 to 3 times / week</option>
-            <option value="1.55" selected>Moderately active: exercise 3 to 5 times / week</option>
-            <option value="1.725">Very active: hard exercise 6 to 7 times / week</option>
-            <option value="1.9">Athlete: hard daily training / physical job</option>
+            <option value="1.2" data-i18n="opt_activity_sedentary">Sedentary: desk job, little exercise</option>
+            <option value="1.375" data-i18n="opt_activity_light">Lightly active: exercise 1 to 3 times / week</option>
+            <option value="1.55" selected data-i18n="opt_activity_moderate">Moderately active: exercise 3 to 5 times / week</option>
+            <option value="1.725" data-i18n="opt_activity_very">Very active: hard exercise 6 to 7 times / week</option>
+            <option value="1.9" data-i18n="opt_activity_athlete">Athlete: hard daily training / physical job</option>
           </select>
         </div>
 
         <div class="field">
-          <label for="pace">Weight-loss pace</label>
+          <label for="pace" data-i18n="field_pace">Weight-loss pace</label>
           <select id="pace">
-            <option value="0.005">Gentle: 0.5% of body weight / week</option>
-            <option value="0.0075" selected>Moderate: 0.75% / week</option>
-            <option value="0.01">Brisk: 1% / week (max sustainable)</option>
+            <option value="0.005" data-i18n="opt_pace_gentle">Gentle: 0.5% of body weight / week</option>
+            <option value="0.0075" selected data-i18n="opt_pace_moderate">Moderate: 0.75% / week</option>
+            <option value="0.01" data-i18n="opt_pace_brisk">Brisk: 1% / week (max sustainable)</option>
           </select>
         </div>
       </div>
 
       <div class="field">
-        <label for="protein-g">Protein intake <span class="g-value"><output id="protein-out" for="protein-g">170</output> g / day</span> <span class="g-day" id="protein-gday"></span></label>
-        <p class="hint reg-academic">Protein intake is the primary determinant of lean mass retention during a caloric deficit. Adjust the slider to observe the effect of each level on muscle preservation, satiety, and total daily energy intake, shown below.</p>
-        <p class="hint reg-conversational">This is the main lever for keeping muscle while dieting. Move the slider to see what each level does to muscle, hunger, and your total calories for the day, shown below.</p>
+        <label for="protein-g"><span data-i18n="field_protein">Protein intake</span> <span class="g-value"><output id="protein-out" for="protein-g">170</output> <span data-i18n="unit_gday">g / day</span></span> <span class="g-day" id="protein-gday"></span></label>
+        <p class="hint" data-i18n-html="hint_protein"></p>
         <div class="blend-row">
           <span class="blend-end" id="protein-min">85</span>
           <div class="slider-wrap">
@@ -140,9 +142,8 @@
       </div>
 
       <div class="field">
-        <label for="fat-g">Fat intake <span class="g-value"><output id="fat-out" for="fat-g">68</output> g / day</span> <span class="g-day" id="fat-gday"></span></label>
-        <p class="hint reg-academic">Dietary fat is the precursor for endocrine hormone synthesis, and at 9 kcal per gram it is also the most energy-dense macronutrient. Every gram added here directly raises total daily energy intake.</p>
-        <p class="hint reg-conversational">Fat is where your hormones come from, but at 9 kcal per gram it's also the priciest macro. Every gram you add here goes straight onto your daily total.</p>
+        <label for="fat-g"><span data-i18n="field_fat">Fat intake</span> <span class="g-value"><output id="fat-out" for="fat-g">68</output> <span data-i18n="unit_gday">g / day</span></span> <span class="g-day" id="fat-gday"></span></label>
+        <p class="hint" data-i18n-html="hint_fat"></p>
         <div class="blend-row">
           <span class="blend-end" id="fat-min">34</span>
           <div class="slider-wrap">
@@ -155,9 +156,8 @@
       </div>
 
       <div class="field">
-        <label for="carbs-g">Carb intake <span class="g-value"><output id="carbs-out" for="carbs-g">200</output> g / day</span> <span class="g-day" id="carbs-gday"></span></label>
-        <p class="hint reg-academic">Carbohydrate is the third independent lever. Total daily energy intake is calculated from all three sliders combined, shown live below, rather than fixed in advance. This makes it possible to observe the lowest total intake achievable while protein, fat, and carbohydrate each remain within their evidence-based optimal ranges.</p>
-        <p class="hint reg-conversational">Carbs get their own slider too. Your total calories for the day are calculated live from all three sliders together, shown below, instead of being fixed ahead of time. Try easing each one down toward its own sweet spot and watch how low you can take your daily total while every chip stays green.</p>
+        <label for="carbs-g"><span data-i18n="field_carbs">Carb intake</span> <span class="g-value"><output id="carbs-out" for="carbs-g">200</output> <span data-i18n="unit_gday">g / day</span></span> <span class="g-day" id="carbs-gday"></span></label>
+        <p class="hint" data-i18n-html="hint_carbs"></p>
         <div class="blend-row">
           <span class="blend-end" id="carbs-min">0</span>
           <div class="slider-wrap">
@@ -173,95 +173,75 @@
     <section id="results" class="results" aria-live="polite"></section>
 
     <section class="card science reveal" id="science">
-      <h2 class="sci-title">How the maths works</h2>
-      <p class="sci-intro reg-academic">The complete calculation is implemented in approximately 300 lines of client-side JavaScript and runs entirely within the browser; no server-side processing occurs. Each modelling decision below is linked to the peer-reviewed source it is based on, and simplifications are noted explicitly where the underlying evidence warrants it.
-        <a href="https://github.com/PeterSlijkhuis/Macro-Calculator/blob/main/app.js">View the source.</a></p>
-      <p class="sci-intro reg-conversational">Nothing here is a black box. Every step below runs right in your browser, in about 300 lines of readable JavaScript, and every decision links to the research it's based on. Where we've simplified something, we say so.
-        <a href="https://github.com/PeterSlijkhuis/Macro-Calculator/blob/main/app.js">See the code for yourself.</a></p>
+      <h2 class="sci-title" data-i18n="sci_title">How the maths works</h2>
+      <p class="sci-intro" data-i18n-html="sci_intro"></p>
 
       <div class="sci-step">
         <div class="sci-num">1</div>
         <div class="sci-body">
-          <h3 class="reg-academic">Resting metabolism (BMR)</h3>
-          <h3 class="reg-conversational">How many calories your body burns at rest</h3>
+          <h3 data-i18n="sci_step1_heading"></h3>
           <p class="formula">BMR = 10·weight<sub>kg</sub> + 6.25·height<sub>cm</sub> − 5·age + s</p>
-          <p class="reg-academic">The Mifflin-St Jeor equation<sup class="cite"><a href="#ref-1">1</a></sup> was identified as the most accurate of the commonly used predictive equations in a systematic review of validation studies against measured resting energy expenditure<sup class="cite"><a href="#ref-2">2</a></sup>. The constant <em>s</em> takes a value of +5 for a testosterone-dominant metabolic profile and −161 for an estrogen-dominant profile, a distinction driven by hormone-dependent body composition rather than gender identity. Because gender-affirming hormone therapy produces measurable shifts in lean mass and fat distribution over the initial months of treatment<sup class="cite"><a href="#ref-14">14</a>,<a href="#ref-15">15</a></sup>, the constant <em>s</em> is interpolated linearly over the first 6 months of therapy rather than assigned as a fixed binary value.</p>
-          <p class="reg-conversational">The Mifflin-St Jeor equation<sup class="cite"><a href="#ref-1">1</a></sup> is the most accurate of the commonly used formulas, according to a review that checked them against real measurements<sup class="cite"><a href="#ref-2">2</a></sup>. The constant <em>s</em> is +5 for a testosterone-dominant metabolism and −161 for an estrogen-dominant one, a difference driven by hormone-related body composition, not identity. Because gender-affirming hormone therapy measurably shifts lean mass and fat distribution over the first few months of treatment<sup class="cite"><a href="#ref-14">14</a>,<a href="#ref-15">15</a></sup>, we shift <em>s</em> gradually over the first 6 months on HRT instead of forcing a single before and after switch.</p>
+          <p data-i18n-html="sci_step1_text"></p>
         </div>
       </div>
 
       <div class="sci-step">
         <div class="sci-num">2</div>
         <div class="sci-body">
-          <h3 class="reg-academic">Maintenance energy expenditure (TDEE)</h3>
-          <h3 class="reg-conversational">How many calories you burn in a normal day</h3>
+          <h3 data-i18n="sci_step2_heading"></h3>
           <p class="formula">TDEE = BMR × PAL <span class="formula-note">(1.2 – 1.9)</span></p>
-          <p class="reg-academic">Physical activity level multipliers follow the FAO/WHO/UNU joint expert consultation on human energy requirements<sup class="cite"><a href="#ref-3">3</a></sup>, ranging from 1.2 for a sedentary lifestyle to 1.9 for an athlete engaged in daily intensive training.</p>
-          <p class="reg-conversational">Activity multipliers come from the FAO/WHO/UNU report on human energy needs<sup class="cite"><a href="#ref-3">3</a></sup>, ranging from 1.2 for sedentary to 1.9 for an athlete training hard every day.</p>
+          <p data-i18n-html="sci_step2_text"></p>
         </div>
       </div>
 
       <div class="sci-step">
         <div class="sci-num">3</div>
         <div class="sci-body">
-          <h3 class="reg-academic">Energy deficit</h3>
-          <h3 class="reg-conversational">The deficit: how big a gap to create</h3>
+          <h3 data-i18n="sci_step3_heading"></h3>
           <p class="formula">deficit = pace<sub>%BW/wk</sub> × weight × 7700 ÷ 7 <span class="formula-note">capped at 25% of TDEE</span></p>
-          <p class="reg-academic">Slower rates of weight loss are associated with better preservation of lean mass: elite athletes losing approximately 0.7 percent of body weight per week maintained, and in some cases gained, lean mass, while those losing approximately 1.4 percent per week experienced lean mass loss<sup class="cite"><a href="#ref-6">6</a></sup>. This underlies both the available pace options (0.5 to 1 percent per week) and the 25 percent deficit cap<sup class="cite"><a href="#ref-8">8</a></sup>. The figure of approximately 7,700 kcal per kilogram of fat tissue derives from Wishnofsky's classic analysis<sup class="cite"><a href="#ref-4">4</a></sup>. It functions as a useful planning constant, though the true energy cost per kilogram lost shifts as body composition changes over the course of a diet<sup class="cite"><a href="#ref-5">5</a></sup>; the projected timeline should be read as an estimate rather than a guarantee. This deficit produces a <em>suggested</em> target only; actual daily intake is calculated live from the three macro sliders below, and the results screen compares the two directly.</p>
-          <p class="reg-conversational">Slower cuts protect muscle better: athletes losing about 0.7% of body weight a week kept, and sometimes even gained, lean mass, while athletes losing about 1.4% a week lost it<sup class="cite"><a href="#ref-6">6</a></sup>. That's why we offer 0.5 to 1% pace options and cap the deficit at 25%<sup class="cite"><a href="#ref-8">8</a></sup>. The roughly 7,700 kcal per kg of fat figure comes from Wishnofsky's classic analysis<sup class="cite"><a href="#ref-4">4</a></sup>. It's a handy planning number, though the real energy cost per kilogram shifts as your body composition changes<sup class="cite"><a href="#ref-5">5</a></sup>, so treat the timeline as an estimate, not a promise. This is only a <em>suggested</em> target, though; your actual daily total comes live from the three sliders below, and the results screen shows you both side by side.</p>
+          <p data-i18n-html="sci_step3_text"></p>
         </div>
       </div>
 
       <div class="sci-step">
         <div class="sci-num">4</div>
         <div class="sci-body">
-          <h3 class="reg-academic">Protein: preservation of lean mass</h3>
-          <h3 class="reg-conversational">Protein: your muscle insurance</h3>
+          <h3 data-i18n="sci_step4_heading"></h3>
           <p class="formula">protein = 1.0 – 3.0 g × reference weight<sub>kg</sub> <span class="formula-note">default 2.0</span></p>
-          <p class="reg-academic">A meta-analysis of 49 trials found that the benefit of protein intake for lean mass gain plateaus at approximately 1.6 g/kg/day, with the confidence interval extending to approximately 2.2<sup class="cite"><a href="#ref-7">7</a></sup>, the basis for the optimal range identified above. Dieting athletes, particularly those already lean, may benefit from intakes at or above the upper end of this range<sup class="cite"><a href="#ref-8">8</a>,<a href="#ref-9">9</a></sup>. Protein is also the most satiating macronutrient<sup class="cite"><a href="#ref-10">10</a></sup> and has the highest thermic effect of food, with 20 to 30 percent of its energy expended during digestion<sup class="cite"><a href="#ref-11">11</a></sup>. Above a BMI of 30, protein is dosed against target weight rather than current weight, a practical approximation for the fat-free-mass-based dosing used in the primary literature<sup class="cite"><a href="#ref-8">8</a></sup>.</p>
-          <p class="reg-conversational">A meta-analysis of 49 trials found that protein's benefit for muscle levels off at around 1.6 g/kg a day, with the upper end of the confidence range reaching about 2.2<sup class="cite"><a href="#ref-7">7</a></sup>, which is why that's our sweet spot. Dieting athletes, especially lean ones, may benefit from going even higher<sup class="cite"><a href="#ref-8">8</a>,<a href="#ref-9">9</a></sup>. Protein is also the most filling macro<sup class="cite"><a href="#ref-10">10</a></sup> and burns the most calories just to digest, 20 to 30% of its own energy<sup class="cite"><a href="#ref-11">11</a></sup>. Above a BMI of 30, we dose protein against your target weight instead of current weight, a practical stand-in for the lean-mass-based dosing used in the research<sup class="cite"><a href="#ref-8">8</a></sup>.</p>
+          <p data-i18n-html="sci_step4_text"></p>
         </div>
       </div>
 
       <div class="sci-step">
         <div class="sci-num">5</div>
         <div class="sci-body">
-          <h3 class="reg-academic">Fat: endocrine considerations</h3>
-          <h3 class="reg-conversational">Fat: keeping your hormones running</h3>
+          <h3 data-i18n="sci_step5_heading"></h3>
           <p class="formula">fat = 0.4 – 1.6 g × reference weight<sub>kg</sub> <span class="formula-note">default 0.8 · warning below 0.6</span></p>
-          <p class="reg-academic">A meta-analysis found that low-fat diets reduce testosterone levels in men<sup class="cite"><a href="#ref-12">12</a></sup>, and contest-preparation reviews recommend maintaining fat at approximately 15 to 30 percent of calories even during aggressive deficits<sup class="cite"><a href="#ref-8">8</a></sup>. Dietary fat additionally serves as the transport medium for the fat-soluble vitamins A, D, E, and K.</p>
-          <p class="reg-conversational">A meta-analysis found that low-fat diets lower testosterone in men<sup class="cite"><a href="#ref-12">12</a></sup>, and contest-prep guides recommend keeping fat at roughly 15 to 30% of calories even in a deep cut<sup class="cite"><a href="#ref-8">8</a></sup>. Fat also carries the fat-soluble vitamins A, D, E, and K around your body.</p>
+          <p data-i18n-html="sci_step5_text"></p>
         </div>
       </div>
 
       <div class="sci-step">
         <div class="sci-num">6</div>
         <div class="sci-body">
-          <h3 class="reg-academic">Carbohydrate: the third independent lever</h3>
-          <h3 class="reg-conversational">Carbs: the third lever</h3>
+          <h3 data-i18n="sci_step6_heading"></h3>
           <p class="formula">calories = protein×4 + carbs×4 + fat×9 <span class="formula-note">derived, not fixed</span></p>
-          <p class="reg-academic">Protein, fat, and carbohydrate are each set independently, and total daily energy intake is the sum of the three, calculated live rather than fixed in advance. This makes the trade-off explicit: total calories can be lowered only by reducing one or more of the three macronutrients, and the results screen reports how far the current combination sits from the suggested pace-based target. The carbohydrate zone thresholds reflect sports-nutrition guidance on carbohydrate requirements scaling with training load<sup class="cite"><a href="#ref-13">13</a></sup>.</p>
-          <p class="reg-conversational">Protein, fat, and carbs are each their own dial now, and your total calories for the day are just the three of them added up, calculated live instead of fixed in advance. That makes the trade-off obvious: the only way to bring your total down is to bring one of the three sliders down, and the results screen tells you exactly how far you are from the suggested target. The carb zone labels follow sports-nutrition guidance on carb needs scaling with how much you train<sup class="cite"><a href="#ref-13">13</a></sup>.</p>
+          <p data-i18n-html="sci_step6_text"></p>
         </div>
       </div>
 
       <div class="open-science">
-        <h3>Open science, open source</h3>
-        <ul class="reg-academic">
-          <li><strong>Auditable.</strong> The complete source code is MIT-licensed and publicly available; every constant referenced above appears verbatim in the implementation.</li>
-          <li><strong>Private.</strong> No server-side processing, analytics, or account system is used. Input data remains on-device, stored only in browser local storage.</li>
-          <li><strong>Bounded in scope.</strong> These are population-level equations, and individual variance is real: a margin of error of approximately 10 percent on BMR estimates is typical<sup class="cite"><a href="#ref-2">2</a></sup>. Monitoring actual weight trend over 2 to 3 weeks and adjusting accordingly is recommended.</li>
-        </ul>
-        <ul class="reg-conversational">
-          <li><strong>Auditable:</strong> the full source is MIT-licensed and public. Every number above appears exactly as written in the code.</li>
-          <li><strong>Private:</strong> no server, no analytics, no account. Your inputs never leave your device, they're only saved in your browser's local storage.</li>
-          <li><strong>Honest about limits:</strong> these are population-level equations, and real people vary. About 10% error on BMR estimates is normal<sup class="cite"><a href="#ref-2">2</a></sup>. Track your actual weight trend for 2 to 3 weeks and adjust from there.</li>
+        <h3 data-i18n="open_science_title">Open science, open source</h3>
+        <ul>
+          <li data-i18n-html="open_science_bullet1"></li>
+          <li data-i18n-html="open_science_bullet2"></li>
+          <li data-i18n-html="open_science_bullet3"></li>
         </ul>
       </div>
     </section>
 
     <section class="card refs reveal" id="references">
-      <h2 class="sci-title">References</h2>
+      <h2 class="sci-title" data-i18n="references_title">References</h2>
       <ol class="ref-list">
         <li id="ref-1">Mifflin MD, St Jeor ST, Hill LA, Scott BJ, Daugherty SA, Koh YO. A new predictive equation for resting energy expenditure in healthy individuals. <em>Am J Clin Nutr.</em> 1990;51(2):241–247. <a href="https://doi.org/10.1093/ajcn/51.2.241">doi:10.1093/ajcn/51.2.241</a></li>
         <li id="ref-2">Frankenfield D, Roth-Yousey L, Compher C. Comparison of predictive equations for resting metabolic rate in healthy nonobese and obese adults: a systematic review. <em>J Am Diet Assoc.</em> 2005;105(5):775–789. <a href="https://doi.org/10.1016/j.jada.2005.02.005">doi:10.1016/j.jada.2005.02.005</a></li>
@@ -282,12 +262,12 @@
     </section>
 
     <footer class="foot">
-      <p class="reg-academic"><strong>This tool does not constitute medical advice.</strong> The estimates provided are evidence-based approximations intended for healthy adults. Individual requirements vary; consultation with a physician or registered dietitian is recommended prior to substantial dietary changes, particularly for individuals under 18, during pregnancy, with an existing medical condition or history of disordered eating, or while undergoing hormone therapy.</p>
-      <p class="reg-conversational"><strong>Not medical advice.</strong> This tool gives evidence-based estimates for healthy adults. Individual needs vary, so talk to a doctor or registered dietitian before making big dietary changes, especially if you're under 18, pregnant, have a medical condition or eating-disorder history, or are on hormone therapy.</p>
-      <p>See <a href="#science">how the maths works</a> and the <a href="#references">reference list</a> above. <a href="https://github.com/PeterSlijkhuis/Macro-Calculator">MIT-licensed source on GitHub</a>.</p>
+      <p data-i18n-html="footer_disclaimer"></p>
+      <p data-i18n-html="footer_links"></p>
     </footer>
   </main>
 
+  <script src="i18n.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

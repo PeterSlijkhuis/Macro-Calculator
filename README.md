@@ -4,7 +4,8 @@ A free, no-build, single-page, **open-science** web tool that calculates your
 daily calories and macros to **lose fat at a healthy pace while preserving
 muscle**, with every formula and every threshold linked to the peer-reviewed
 research it's based on. Explanations are available in two registers, academic
-and conversational, toggled from a switch at the top of the page.
+and conversational, toggled from a switch at the top of the page, and in six
+languages.
 
 **[Open the calculator](https://peterslijkhuis.github.io/Macro-Calculator/)** (GitHub Pages)
 
@@ -18,6 +19,12 @@ and conversational, toggled from a switch at the top of the page.
 - **Academic and conversational explanations.** A toggle at the top of the
   page switches every hint, warning, and results explanation between a formal
   register and a plain-language one, without changing any of the numbers
+- **Six languages.** English, Spanish, Dutch, French, German, and Papiamentu,
+  selectable from the top of the page. Every hint, warning, results
+  explanation, and the "How the maths works" section is translated in both
+  the academic and conversational register; the meal plan export follows the
+  selected language too. Academic references are kept in their original
+  language, as in real scholarly practice
 - **Three independent gram sliders.** Protein, fat, and carbs each have their
   own 1-gram-step slider (bounds scale with your bodyweight) with a status
   chip, a large pop-up gram readout while you drag, and an explanation of
@@ -32,6 +39,11 @@ and conversational, toggled from a switch at the top of the page.
   loss/gain that reacts to the sliders in real time
 - **Muscle-sparing defaults.** Protein 2.0 g/kg, fat 0.8 g/kg, deficit capped
   at 25% of maintenance
+- **Meal plan export.** One click generates a self-contained, printable page
+  (no PDF library, no server) with a formatted overview of your current
+  settings and macros, a curated list of healthy whole-food sources for each
+  macro, and example breakfast/lunch/dinner/snack combinations. Opens in a
+  new tab; use your browser's print dialog to save it as a PDF
 - **Safety rails.** Warnings for very low calories, very low carbs, and under-18 users
 - **In-app "How the maths works".** A numbered, cited walkthrough of every
   formula, plus a full reference list with DOI links, right on the page
